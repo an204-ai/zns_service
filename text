@@ -1,0 +1,13 @@
+giờ tui mô tả lại cái tui đang hiểu thử coi đúng ko nha,
+là bên phía sếp tui đẫ đăng ký dịch vụ zns với fpt rồi nên
+họ với cấp cho file api nên tui nghĩ cũng đã cấp tài khoản fns.fpt
+cho sếp tui rồi. Giờ sếp tui muốn kinh doanh lại dịch vụ zns này, kêu
+tui làm hệ thống để cho thuê và quản lý, thì khi mà khách hàng thuê bên tui,
+thì sếp sẽ lên trang admin của fns.fpt để thêm OA của khách vào
+tài khoản fns.fpt mà bên tui đã đăng ký hoặc nếu khách chưa có OA thì
+bên tui sẽ hỗ trợ tạo OA cho khách rồi thêm lên hệ thống. Sau khi thêm
+OA xong rồi thì sếp tui sẽ tạo 1 ứng dụng zns cho OA mới vừa thêm đó,
+và sẽ có dc app id và secrect key của ứng dụng đó, sếp sẽ quay về hệ
+thống quản lý của tui làm để thêm app id và secrect key sau đó,
+hệ thống sẽ map app id và secrect key và tạo khách hàng tương ứng cho nó rồi
+cấp api key cho khách hàng truy cập api của bên tui để sử dụng

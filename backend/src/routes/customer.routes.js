@@ -1,0 +1,57 @@
+const express = require('express');
+const multer = require('multer');
+const router = express.Router();
+const { authenticateToken } = require('../middlewares/authJwt');
+const { authorize } = require('../middlewares/authorize');
+const customer = require('../controllers/customer/customerController');
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
+  fileFilter: (req, file, cb) => {
+    const allowed = [
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'application/vnd.ms-excel',
+    ];
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Chỉ chấp nhận file Excel (.xlsx, .xls)'));
+    }
+  },
+});
+
+// All customer routes require JWT + CUSTOMER role
+router.use(authenticateToken, authorize('CUSTOMER'));
+
+// Dashboard
+router.get('/dashboard', customer.dashboard);
+
+// Profile
+router.get('/profile', customer.getProfile);
+router.put('/profile', customer.updateProfile);
+router.post('/change-password', customer.changePassword);
+
+// API Keys
+router.get('/api-keys', customer.listApiKeys);
+router.post('/api-keys', customer.createApiKey);
+router.patch('/api-keys/:id/toggle', customer.toggleApiKey);
+router.delete('/api-keys/:id', customer.deleteApiKey);
+
+// OA & Templates
+router.get('/oa-configs', customer.listOAConfigs);
+router.post('/oa-configs/:id/regenerate-key', customer.regenerateOAKey);
+
+// Send message
+router.post('/send-message', customer.sendMessage);
+
+// Campaigns
+router.get('/campaigns', customer.listCampaigns);
+router.get('/campaigns/:id', customer.getCampaign);
+router.post('/campaigns', upload.single('file'), customer.createCampaign);
+
+// Messages
+router.get('/messages', customer.listMessages);
+router.get('/messages/:id', customer.getMessage);
+
+module.exports = router;
