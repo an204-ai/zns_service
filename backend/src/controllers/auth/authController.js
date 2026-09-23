@@ -35,10 +35,11 @@ async function login(req, res, next) {
 
     const { accessToken, refreshToken } = generateTokens(user);
 
-    // Set refresh token as httpOnly cookie
+    // Automatically set secure flag if accessed via HTTPS (domain) or false if HTTP (IP/localhost)
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie('refreshToken', refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -81,9 +82,10 @@ async function refresh(req, res, next) {
 
     const tokens = generateTokens(user);
 
+    const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
     res.cookie('refreshToken', tokens.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: isSecure,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
