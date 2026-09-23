@@ -6,12 +6,23 @@ const prisma = new PrismaClient();
 async function main() {
   console.log('🌱 Seeding database...');
 
-  // Create admin user
+  // Xóa toàn bộ tài khoản khác, chỉ giữ lại duy nhất tài khoản admin
+  await prisma.user.deleteMany({
+    where: {
+      email: { not: 'admin' },
+    },
+  });
+
+  // Khởi tạo hoặc cập nhật duy nhất 1 tài khoản admin
   const passwordHash = await bcrypt.hash('admin123', 12);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin' },
-    update: {},
+    update: {
+      passwordHash,
+      status: 'ACTIVE',
+      role: 'ADMIN',
+    },
     create: {
       email: 'admin',
       passwordHash,
@@ -23,24 +34,7 @@ async function main() {
     },
   });
 
-  console.log(`✅ Admin user created: ${admin.email}`);
-
-  // Create demo customer user
-  const customerPasswordHash = await bcrypt.hash('customer123', 12);
-  const customer = await prisma.user.upsert({
-    where: { email: 'customer' },
-    update: {},
-    create: {
-      email: 'customer',
-      passwordHash: customerPasswordHash,
-      fullName: 'Khách hàng mẫu',
-      companyName: 'Công ty Demo',
-      phone: '0901112222',
-      role: 'CUSTOMER',
-      status: 'ACTIVE',
-    },
-  });
-  console.log(`✅ Demo customer created: ${customer.email}`);
+  console.log(`✅ Duy nhất 1 tài khoản Admin: ${admin.email}`);
   console.log('🌱 Seeding complete!');
 }
 
