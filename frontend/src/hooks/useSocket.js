@@ -1,7 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_WS_URL || 'http://localhost:4000';
+// Connects to current origin by default, or VITE_WS_URL if explicitly configured
+const SOCKET_URL = import.meta.env.VITE_WS_URL || undefined;
 
 export function useSocket(onEvent) {
   const socketRef = useRef(null);

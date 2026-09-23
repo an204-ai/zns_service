@@ -24,6 +24,24 @@ async function main() {
   });
 
   console.log(`✅ Admin user created: ${admin.email}`);
+
+  // Create demo customer user
+  const customerPasswordHash = await bcrypt.hash('customer123', 12);
+  const customer = await prisma.user.upsert({
+    where: { email: 'customer' },
+    update: {},
+    create: {
+      email: 'customer',
+      passwordHash: customerPasswordHash,
+      fullName: 'Khách hàng mẫu',
+      companyName: 'Công ty Demo',
+      phone: '0901112222',
+      role: 'CUSTOMER',
+      status: 'ACTIVE',
+      balance: 500000,
+    },
+  });
+  console.log(`✅ Demo customer created: ${customer.email}`);
   console.log('🌱 Seeding complete!');
 }
 

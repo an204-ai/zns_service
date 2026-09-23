@@ -5,9 +5,14 @@ const { env } = require('../config/env');
 let io = null;
 
 function initSocket(server) {
+  const allowedOrigins = (env.FRONTEND_URL || '')
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   io = new Server(server, {
     cors: {
-      origin: env.FRONTEND_URL,
+      origin: allowedOrigins.length > 0 ? allowedOrigins : '*',
       methods: ['GET', 'POST'],
       credentials: true,
     },

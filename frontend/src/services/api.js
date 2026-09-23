@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api/v1';
+// Relative URL '/api/v1' enables seamless portability across any domain, VPS, or localhost.
+// Overrideable via VITE_API_URL if frontend and backend are hosted on separate domains.
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/v1';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
