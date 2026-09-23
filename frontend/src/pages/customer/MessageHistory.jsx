@@ -4,6 +4,7 @@ import api from '../../services/api';
 import { MagnifyingGlass } from '@phosphor-icons/react';
 import { useSocket } from '../../hooks/useSocket';
 import Pagination from '../../components/Pagination';
+import CustomSelect from '../../components/CustomSelect';
 
 export default function CustomerMessageHistory() {
   const [filters, setFilters] = useState({ phone: '', status: '', page: 1, limit: 10 });
@@ -45,26 +46,19 @@ export default function CustomerMessageHistory() {
               onChange={(e) => setFilters({ ...filters, phone: e.target.value, page: 1 })}
             />
           </div>
-          <select
-            className="filter-select"
-            style={{
-              height: 36,
-              padding: '0 12px',
-              fontSize: 13,
-              borderRadius: 6,
-              border: '1px solid #e2e8f0',
-              background: '#ffffff',
-              color: '#0f172a',
-            }}
+          <CustomSelect
             value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="QUEUED">Đang chờ</option>
-            <option value="SENT">Đã gửi</option>
-            <option value="SUCCESS">Thành công</option>
-            <option value="FAILED">Thất bại</option>
-          </select>
+            onChange={(val) => setFilters({ ...filters, status: val, page: 1 })}
+            placeholder="Tất cả trạng thái"
+            style={{ width: 180 }}
+            options={[
+              { value: '', label: 'Tất cả trạng thái' },
+              { value: 'QUEUED', label: 'Đang chờ' },
+              { value: 'SENT', label: 'Đã gửi' },
+              { value: 'SUCCESS', label: 'Thành công' },
+              { value: 'FAILED', label: 'Thất bại' },
+            ]}
+          />
         </div>
       </div>
 

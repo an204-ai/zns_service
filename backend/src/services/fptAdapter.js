@@ -4,7 +4,7 @@ const { redis } = require('../config/redis');
 
 const fptClient = axios.create({
   baseURL: env.FPT_ZBS_BASE_URL,
-  timeout: 5000,
+  timeout: 3000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -131,8 +131,17 @@ async function getTemplateDetail(appId, secretKey, templateId) {
     throw error;
   }
 
-  if (response.data.status !== 1) {
-    const error = new Error(response.data.message || `FPT trả về lỗi khi lấy thông tin mẫu tin #${templateId}`);
+  const res = response.data;
+  const isSuccess =
+    res.status === 1 ||
+    res.status === 0 ||
+    res.error === 0 ||
+    res.code === 0 ||
+    res.code === 1 ||
+    (res.message && res.message.toLowerCase() === 'success');
+
+  if (!isSuccess) {
+    const error = new Error(res.message || `FPT trả về lỗi khi lấy thông tin mẫu tin #${templateId}`);
     error.statusCode = 400;
     throw error;
   }
@@ -159,6 +168,8 @@ async function getQuota(appId, secretKey, forceRefresh = false) {
       },
     });
   } catch (err) {
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
     const detail = err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ FPT';
     const error = new Error(`Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
     error.statusCode = 502;
@@ -222,14 +233,23 @@ async function getRatings(appId, secretKey, { templateId, fromTime, toTime, page
     throw error;
   }
 
-  if (response.data.status !== 1) {
-    const error = new Error(response.data.message || 'FPT trả về lỗi khi tra cứu đánh giá mẫu tin');
+  const res = response.data;
+  const isSuccess =
+    res.status === 1 ||
+    res.status === 0 ||
+    res.error === 0 ||
+    res.code === 0 ||
+    res.code === 1 ||
+    (res.message && res.message.toLowerCase() === 'success');
+
+  if (!isSuccess) {
+    const error = new Error(res.message || 'FPT trả về lỗi khi tra cứu đánh giá mẫu tin');
     error.statusCode = 400;
     throw error;
   }
 
-  await redis.set(cacheKey, JSON.stringify(response.data), 'EX', 120); // 2 minutes cache
-  return response.data;
+  await redis.set(cacheKey, JSON.stringify(res), 'EX', 120); // 2 minutes cache
+  return res;
 }
 
 module.exports = {

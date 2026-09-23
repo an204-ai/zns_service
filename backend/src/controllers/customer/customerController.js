@@ -249,7 +249,8 @@ async function getTemplateDetail(req, res, next) {
     const oa = await verifyCustomerOAAccess(req.user.id, req.params.oaId);
     if (!oa) return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập Zalo OA này' });
 
-    const detail = await oaConfigService.getTemplateLiveDetail(req.params.oaId, req.params.templateId);
+    const forceRefresh = req.query.refresh === 'true';
+    const detail = await oaConfigService.getTemplateLiveDetail(req.params.oaId, req.params.templateId, forceRefresh);
     res.json({ success: true, data: detail });
   } catch (error) { next(error); }
 }

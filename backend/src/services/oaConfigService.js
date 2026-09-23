@@ -129,22 +129,49 @@ async function syncTemplates(appConfigId, appId, secretKey) {
 }
 
 /**
- * Get all OA configs with optional filtering
+ * Get all OA configs with optional filtering (supports type: all, system, private, unassigned)
  */
-async function getAllOAConfigs({ userId, status, isSystem, page = 1, limit = 20 }) {
+async function getAllOAConfigs({ userId, status, isSystem, type, search, page = 1, limit = 50 } = {}) {
   const where = {};
   if (userId) where.userId = userId;
   if (status) where.status = status;
-  if (typeof isSystem === 'boolean') where.isSystem = isSystem;
+
+  if (typeof isSystem === 'boolean') {
+    where.isSystem = isSystem;
+  } else if (type === 'system') {
+    where.isSystem = true;
+  } else if (type === 'private') {
+    where.isSystem = false;
+  } else if (type === 'unassigned') {
+    where.isSystem = false;
+    where.userId = null;
+  }
+
+  if (search && search.trim()) {
+    const s = search.trim();
+    where.OR = [
+      { oaName: { contains: s, mode: 'insensitive' } },
+      { fptAppId: { contains: s, mode: 'insensitive' } },
+      { oaId: { contains: s, mode: 'insensitive' } },
+    ];
+  }
 
   const [data, total] = await Promise.all([
     prisma.fptAppConfig.findMany({
       where,
       include: {
         user: { select: { id: true, fullName: true, email: true, companyName: true } },
+        assignments: {
+          include: {
+            user: { select: { id: true, fullName: true, email: true, companyName: true } },
+          },
+        },
         _count: { select: { templates: true, messages: true, assignments: true } },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { isSystem: 'desc' },
+        { createdAt: 'desc' },
+      ],
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -183,32 +210,110 @@ async function getSystemOAConfigs({ status, page = 1, limit = 50 } = {}) {
 }
 
 /**
- * Assign a system App to a customer
+ * Get all available apps that can be assigned to a specific customer:
+ * 1. Active System Apps that are not yet assigned to this user
+ * 2. Active Private Apps that have no user assigned yet (userId IS NULL)
  */
-async function assignSystemOA({ userId, appConfigId }) {
-  const oa = await prisma.fptAppConfig.findFirst({
-    where: { id: appConfigId, isSystem: true },
+async function getAvailableAppsForCustomer(userId) {
+  // Find IDs of system apps already assigned to this user
+  const userAssignments = await prisma.customerAppAssignment.findMany({
+    where: { userId },
+    select: { appConfigId: true },
   });
-  if (!oa) throw Object.assign(new Error('Ứng dụng hệ thống không tồn tại hoặc không phải là ứng dụng hệ thống'), { statusCode: 404 });
+  const assignedSystemAppIds = userAssignments.map(a => a.appConfigId);
+
+  const [systemApps, privateApps] = await Promise.all([
+    // Active System Apps not yet assigned to this customer
+    prisma.fptAppConfig.findMany({
+      where: {
+        isSystem: true,
+        status: 'ACTIVE',
+        ...(assignedSystemAppIds.length > 0 ? { id: { notIn: assignedSystemAppIds } } : {}),
+      },
+      select: {
+        id: true,
+        oaName: true,
+        oaId: true,
+        fptAppId: true,
+        isSystem: true,
+        status: true,
+        _count: { select: { templates: true, assignments: true } },
+      },
+      orderBy: { oaName: 'asc' },
+    }),
+    // Active Private Apps NOT yet assigned to ANY customer (userId is null)
+    prisma.fptAppConfig.findMany({
+      where: {
+        isSystem: false,
+        status: 'ACTIVE',
+        userId: null,
+      },
+      select: {
+        id: true,
+        oaName: true,
+        oaId: true,
+        fptAppId: true,
+        isSystem: true,
+        status: true,
+        _count: { select: { templates: true } },
+      },
+      orderBy: { oaName: 'asc' },
+    }),
+  ]);
+
+  return {
+    systemApps,
+    privateApps,
+    allAvailable: [
+      ...systemApps.map(a => ({ ...a, category: 'SYSTEM' })),
+      ...privateApps.map(a => ({ ...a, category: 'PRIVATE' })),
+    ],
+  };
+}
+
+/**
+ * Assign an App (System or Private) to a customer
+ * System app -> can be assigned to multiple customers (via CustomerAppAssignment)
+ * Private app -> can ONLY be assigned to 1 customer (userId set on FptAppConfig)
+ */
+async function assignAppToCustomer({ userId, appConfigId }) {
+  const app = await prisma.fptAppConfig.findUnique({
+    where: { id: appConfigId },
+  });
+  if (!app) {
+    throw Object.assign(new Error('Ứng dụng không tồn tại'), { statusCode: 404 });
+  }
 
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw Object.assign(new Error('Khách hàng không tồn tại'), { statusCode: 404 });
+  if (!user) {
+    throw Object.assign(new Error('Khách hàng không tồn tại'), { statusCode: 404 });
+  }
 
-  const assignment = await prisma.customerAppAssignment.upsert({
-    where: {
-      userId_appConfigId: { userId, appConfigId },
-    },
-    create: { userId, appConfigId },
-    update: {},
-    include: {
-      appConfig: {
-        select: { id: true, oaName: true, fptAppId: true, isSystem: true },
+  if (app.isSystem) {
+    // System app -> many customers allowed via customerAppAssignment
+    await prisma.customerAppAssignment.upsert({
+      where: {
+        userId_appConfigId: { userId, appConfigId },
       },
-    },
-  });
+      create: { userId, appConfigId },
+      update: {},
+    });
+  } else {
+    // Private app -> ONLY 1 customer allowed!
+    if (app.userId && app.userId !== userId) {
+      throw Object.assign(
+        new Error('Ứng dụng cá nhân này đã được gán cho một khách hàng khác! Mỗi ứng dụng cá nhân chỉ được gán cho duy nhất 1 khách hàng.'),
+        { statusCode: 400 }
+      );
+    }
+    await prisma.fptAppConfig.update({
+      where: { id: appConfigId },
+      data: { userId },
+    });
+  }
 
-  const appName = assignment.appConfig?.oaName || 'Ứng dụng hệ thống';
-  // Auto-create API Key for this customer and system App
+  // Auto-create API Key for this customer and app
+  const appName = app.oaName || 'Ứng dụng Zalo';
   try {
     const apiKeyService = require('./apiKeyService');
     await apiKeyService.getOrCreateApiKeyForApp(
@@ -217,26 +322,59 @@ async function assignSystemOA({ userId, appConfigId }) {
       `Khóa API - ${appName}`
     );
   } catch (err) {
-    console.error('Lỗi tự động tạo API Key khi gán Ứng dụng hệ thống:', err.message);
+    console.error('Lỗi tự động tạo API Key khi gán Ứng dụng:', err.message);
   }
 
-  return assignment;
+  return { success: true, appConfigId, isSystem: app.isSystem };
 }
 
 /**
- * Unassign a system App from a customer
+ * Unassign an App (System or Private) from a customer
  */
-async function unassignSystemOA({ userId, appConfigId }) {
-  // Delete the API key linked to this App for this customer
+async function unassignAppFromCustomer({ userId, appConfigId }) {
+  const app = await prisma.fptAppConfig.findUnique({
+    where: { id: appConfigId },
+  });
+  if (!app) {
+    throw Object.assign(new Error('Ứng dụng không tồn tại'), { statusCode: 404 });
+  }
+
+  // Delete API key linked to this app for this customer
   try {
     await prisma.apiKey.deleteMany({ where: { userId, appConfigId } });
   } catch (err) {
-    console.error('Lỗi xóa API Key khi gỡ ứng dụng hệ thống:', err.message);
+    console.error('Lỗi xóa API Key khi gỡ ứng dụng:', err.message);
   }
 
-  return prisma.customerAppAssignment.deleteMany({
-    where: { userId, appConfigId },
-  });
+  if (app.isSystem) {
+    await prisma.customerAppAssignment.deleteMany({
+      where: { userId, appConfigId },
+    });
+  } else {
+    // If it was assigned to this user, return to unassigned pool (userId = null)
+    if (app.userId === userId) {
+      await prisma.fptAppConfig.update({
+        where: { id: appConfigId },
+        data: { userId: null },
+      });
+    }
+  }
+
+  return { success: true };
+}
+
+/**
+ * Assign a system App to a customer (wrapper for backward compatibility)
+ */
+async function assignSystemOA({ userId, appConfigId }) {
+  return assignAppToCustomer({ userId, appConfigId });
+}
+
+/**
+ * Unassign a system App from a customer (wrapper for backward compatibility)
+ */
+async function unassignSystemOA({ userId, appConfigId }) {
+  return unassignAppFromCustomer({ userId, appConfigId });
 }
 
 /**
@@ -420,15 +558,39 @@ async function getTemplateRatings(appConfigId, templateId, { fromTime, toTime, p
 /**
  * Get live detailed template data from FPT and update DB cache
  */
-async function getTemplateLiveDetail(appConfigId, templateId) {
+async function getTemplateLiveDetail(appConfigId, templateId, forceRefresh = false) {
+  // 1. Kiểm tra dữ liệu mẫu tin đã đồng bộ trong Database trước (phản hồi siêu nhanh < 15ms)
+  const dbTemplate = await prisma.znsTemplate.findFirst({
+    where: {
+      fptAppConfigId: appConfigId,
+      templateId: Number(templateId),
+    },
+    include: {
+      fptAppConfig: {
+        select: { id: true, oaName: true, oaId: true, isSystem: true },
+      },
+    },
+  });
+
+  // Nếu DB đã có thông tin mẫu tin và không yêu cầu cưỡng chế làm mới, trả về ngay lập tức (< 10ms)
+  if (dbTemplate && !forceRefresh) {
+    return {
+      ...dbTemplate,
+      liveDetail: null,
+      liveDetailError: null,
+    };
+  }
+
+  // 2. Nếu chưa có hoặc yêu cầu làm mới (forceRefresh = true), gọi sang FPT
   const { appId, secretKey } = await getDecryptedCredentials(appConfigId);
   let detail = null;
   let liveDetailError = null;
 
   try {
     const detailResult = await fptAdapter.getTemplateDetail(appId, secretKey, Number(templateId));
-    if (detailResult?.status === 1 && detailResult?.data) {
-      detail = detailResult.data;
+    const detailData = detailResult?.data || (detailResult?.templateName || detailResult?.name ? detailResult : null);
+    if (detailData) {
+      detail = detailData;
 
       await prisma.znsTemplate.upsert({
         where: {
@@ -438,7 +600,7 @@ async function getTemplateLiveDetail(appConfigId, templateId) {
           },
         },
         update: {
-          templateName: detail.templateName || undefined,
+          templateName: detail.templateName || detail.name || undefined,
           templateTag: detail.templateTag || null,
           templateQuality: detail.templateQuality || null,
           listParams: detail.listParams || null,
@@ -451,7 +613,7 @@ async function getTemplateLiveDetail(appConfigId, templateId) {
         create: {
           fptAppConfigId: appConfigId,
           templateId: Number(templateId),
-          templateName: detail.templateName || `Template #${templateId}`,
+          templateName: detail.templateName || detail.name || `Template #${templateId}`,
           templateTag: detail.templateTag || null,
           templateQuality: detail.templateQuality || null,
           listParams: detail.listParams || null,
@@ -467,7 +629,7 @@ async function getTemplateLiveDetail(appConfigId, templateId) {
     liveDetailError = err.message;
   }
 
-  const dbTemplate = await prisma.znsTemplate.findFirst({
+  const updatedTemplate = await prisma.znsTemplate.findFirst({
     where: {
       fptAppConfigId: appConfigId,
       templateId: Number(templateId),
@@ -479,14 +641,14 @@ async function getTemplateLiveDetail(appConfigId, templateId) {
     },
   });
 
-  if (!dbTemplate && liveDetailError) {
+  if (!updatedTemplate && !dbTemplate && liveDetailError) {
     const error = new Error(liveDetailError);
     error.statusCode = 400;
     throw error;
   }
 
   return {
-    ...dbTemplate,
+    ...(updatedTemplate || dbTemplate),
     liveDetail: detail,
     liveDetailError,
   };
@@ -497,6 +659,9 @@ module.exports = {
   syncTemplates,
   getAllOAConfigs,
   getSystemOAConfigs,
+  getAvailableAppsForCustomer,
+  assignAppToCustomer,
+  unassignAppFromCustomer,
   assignSystemOA,
   unassignSystemOA,
   getOAConfigById,

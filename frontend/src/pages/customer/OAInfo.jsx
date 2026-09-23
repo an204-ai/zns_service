@@ -98,7 +98,7 @@ export default function CustomerOAInfo() {
             }}
           >
             <ArrowLeft size={15} weight="bold" />
-            Quay lại danh sách ứng dụng liên kết
+            Quay lại danh sách ứng dụng
           </button>
 
           <div
@@ -111,36 +111,36 @@ export default function CustomerOAInfo() {
             }}
           >
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
                 <h1 className="page-header-title" style={{ margin: 0, fontSize: 20 }}>
                   {selectedOa.oaName}
                 </h1>
                 {selectedOa.isSystem ? (
-                  <span className="badge badge-primary">Ứng dụng hệ thống</span>
+                  <span className="badge badge-primary">Hệ thống</span>
                 ) : (
-                  <span className="badge badge-success">Ứng dụng riêng</span>
+                  <span className="badge badge-success">Cá nhân</span>
                 )}
                 <span className="badge-active-pill">Đang hoạt động</span>
               </div>
-              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
-                Mã định danh OA: <strong style={{ color: '#0f172a' }}>{selectedOa.oaId || 'Chưa cập nhật'}</strong>
-                <span style={{ margin: '0 8px', color: '#cbd5e1' }}>•</span>
-                <span style={{ color: '#0284c7', fontWeight: 600 }}>{selectedOa.templates?.length || 0}</span> mẫu tin ZNS sẵn sàng
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                  Mã OA: <strong style={{ color: '#0f172a' }}>{selectedOa.oaId || 'Chưa cập nhật'}</strong>
+                </div>
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                  <span style={{ color: '#0284c7', fontWeight: 600 }}>{selectedOa.templates?.length || 0}</span> mẫu tin ZNS
+                </div>
                 {oaQuota?.dailyQuota ? (
-                  <>
-                    <span style={{ margin: '0 8px', color: '#cbd5e1' }}>•</span>
-                    <span>Hạn mức hôm nay: </span>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f0fdf4', padding: '3px 10px', borderRadius: 20, border: '1px solid #bbf7d0' }}>
+                    <Gauge size={13} color="#059669" weight="bold" />
                     <strong style={{ color: '#059669' }}>
-                      {oaQuota.remainingQuota?.toLocaleString('vi-VN')} / {oaQuota.dailyQuota?.toLocaleString('vi-VN')} tin
-                    </strong>
-                  </>
+                      {oaQuota.remainingQuota?.toLocaleString('vi-VN')} / {oaQuota.dailyQuota?.toLocaleString('vi-VN')}
+                    </strong> tin hôm nay
+                  </div>
                 ) : isQuotaError ? (
-                  <>
-                    <span style={{ margin: '0 8px', color: '#cbd5e1' }}>•</span>
-                    <span style={{ color: '#dc2626', fontSize: 12, fontWeight: 500 }}>
-                      Không thể lấy hạn mức FPT
-                    </span>
-                  </>
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#dc2626', background: '#fef2f2', padding: '3px 10px', borderRadius: 20, border: '1px solid #fecaca' }}>
+                    <WarningCircle size={13} weight="bold" />
+                    Không thể lấy hạn mức
+                  </div>
                 ) : null}
               </div>
             </div>
@@ -238,138 +238,120 @@ export default function CustomerOAInfo() {
           </div>
         </div>
 
-        {/* Thẻ hạn mức gửi tin ZNS */}
+        {/* Thanh Hạn mức gửi tin ZNS tinh gọn (1 hàng duy nhất) */}
         <div
           className="card"
           style={{
             marginBottom: 'var(--spacing-md)',
-            padding: '14px 18px',
+            padding: '10px 16px',
             background: '#ffffff',
             border: isQuotaError ? '1px solid #fecaca' : '1px solid #e2e8f0',
             borderRadius: 8,
             boxShadow: 'none',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: isQuotaError ? 0 : 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 6,
-                  background: isQuotaError ? '#fef2f2' : '#f0f9ff',
-                  color: isQuotaError ? '#dc2626' : '#0284c7',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  flexShrink: 0,
-                }}
-              >
-                {isQuotaError ? <WarningCircle size={18} weight="bold" /> : <Gauge size={18} weight="bold" />}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              flexWrap: 'wrap',
+              fontSize: 12.5,
+            }}
+          >
+            {isQuotaLoading ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b' }}>
+                <div className="spinner" style={{ width: 14, height: 14 }} />
+                <span>Đang kiểm tra hạn mức từ máy chủ FPT...</span>
               </div>
-              <div>
-                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
-                  Hạn mức gửi tin ZNS hôm nay
+            ) : isQuotaError ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#991b1b', flexWrap: 'wrap' }}>
+                <WarningCircle size={16} color="#dc2626" weight="bold" />
+                <span>
+                  Không thể lấy hạn mức FPT: <span style={{ color: '#b91c1c' }}>{quotaError?.response?.data?.message || quotaError?.message || 'Timeout / Lỗi kết nối'}</span>
                 </span>
-                <span style={{ fontSize: 11.5, color: '#64748b', marginLeft: 8 }}>
-                  (Cập nhật từ FPT Telecom)
-                </span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              {!isQuotaError && oaQuota && (
-                <span
+                <button
+                  type="button"
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => refetchQuota()}
                   style={{
-                    fontSize: 13,
-                    fontWeight: 700,
-                    color: '#059669',
-                    background: '#ecfdf5',
-                    padding: '3px 10px',
-                    borderRadius: 6,
-                    border: '1px solid #d1fae5',
+                    height: 24,
+                    padding: '0 8px',
+                    fontSize: 11.5,
+                    color: '#991b1b',
+                    borderColor: '#fca5a5',
+                    background: '#fef2f2',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
                   }}
                 >
-                  Còn {oaQuota.remainingQuota?.toLocaleString('vi-VN') || 0} / {oaQuota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
-                </span>
-              )}
-              <button
-                type="button"
-                className="btn btn-secondary btn-sm"
-                style={{ height: 28, padding: '0 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                onClick={() => refetchQuota()}
-                disabled={isQuotaLoading}
-                title="Làm mới hạn mức"
-              >
-                <ArrowsClockwise size={12} className={isQuotaLoading ? 'spin' : ''} />
-                Làm mới
-              </button>
-            </div>
-          </div>
-
-          {isQuotaLoading ? (
-            <div style={{ padding: '8px 0', fontSize: 12, color: '#64748b' }}>Đang kiểm tra hạn mức từ máy chủ FPT...</div>
-          ) : isQuotaError ? (
-            <div
-              style={{
-                marginTop: 10,
-                padding: '10px 14px',
-                background: '#fef2f2',
-                borderRadius: 6,
-                fontSize: 12.5,
-                color: '#b91c1c',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 8,
-              }}
-            >
-              <span>
-                <strong>Không thể lấy hạn mức từ FPT:</strong>{' '}
-                {quotaError?.response?.data?.message || quotaError?.message || 'Lỗi kết nối máy chủ FPT ZBS'}
-              </span>
-            </div>
-          ) : oaQuota ? (
-            <>
-              {/* Progress bar */}
-              <div style={{ background: '#f1f5f9', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 6 }}>
-                <div
-                  style={{
-                    background: '#0284c7',
-                    height: '100%',
-                    width: `${oaQuota.dailyQuota ? Math.min(100, Math.round((oaQuota.remainingQuota / oaQuota.dailyQuota) * 100)) : 0}%`,
-                    borderRadius: 4,
-                    transition: 'width 0.3s ease',
-                  }}
-                />
+                  <ArrowsClockwise size={12} /> Thử lại
+                </button>
               </div>
-
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#64748b', flexWrap: 'wrap', gap: 6 }}>
-                <span>
-                  Đã sử dụng {oaQuota.dailyQuota ? (oaQuota.dailyQuota - oaQuota.remainingQuota).toLocaleString('vi-VN') : 0} tin trong ngày
-                </span>
-                {oaQuota.remainingMonthlyPromotionQuota !== undefined && (
-                  <span>
-                    Hạn mức tin hậu mãi (Promotion): Còn{' '}
-                    <strong style={{ color: '#0f172a' }}>
-                      {oaQuota.remainingMonthlyPromotionQuota?.toLocaleString('vi-VN')} tin
-                    </strong>
+            ) : oaQuota ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#334155' }}>
+                  <Gauge size={16} color="#0284c7" weight="bold" />
+                  <span style={{ color: '#64748b' }}>Hạn mức hôm nay:</span>
+                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                    {oaQuota.remainingQuota?.toLocaleString('vi-VN') || 0}{' '}
+                    <span style={{ fontWeight: 500, color: '#64748b', fontSize: 11.5 }}>
+                      / {oaQuota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
+                    </span>
                   </span>
+                  {/* Mini Progress bar */}
+                  <div style={{ width: 64, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginLeft: 4 }}>
+                    <div
+                      style={{
+                        height: '100%',
+                        background: '#0284c7',
+                        width: `${oaQuota.dailyQuota ? Math.min(100, Math.round((oaQuota.remainingQuota / oaQuota.dailyQuota) * 100)) : 0}%`,
+                        borderRadius: 3,
+                      }}
+                    />
+                  </div>
+                  <span style={{ fontSize: 11.5, color: '#0284c7', fontWeight: 600, marginLeft: 2 }}>
+                    (Còn {oaQuota.dailyQuota ? Math.round((oaQuota.remainingQuota / oaQuota.dailyQuota) * 100) : 0}%)
+                  </span>
+                </div>
+
+                {oaQuota.remainingMonthlyPromotionQuota !== undefined && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#334155' }}>
+                    <span style={{ color: '#cbd5e1' }}>•</span>
+                    <span style={{ color: '#64748b' }}>Hậu mãi:</span>
+                    <span style={{ fontWeight: 700, color: '#059669' }}>
+                      {oaQuota.remainingMonthlyPromotionQuota?.toLocaleString('vi-VN')} tin
+                    </span>
+                  </div>
                 )}
               </div>
-            </>
-          ) : (
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
-              Chưa có dữ liệu hạn mức từ FPT. Bấm "Làm mới" để kiểm tra.
-            </div>
-          )}
+            ) : (
+              <div style={{ color: '#64748b' }}>
+                Chưa có dữ liệu hạn mức từ FPT. Bấm "Làm mới" để kiểm tra.
+              </div>
+            )}
+
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              style={{ height: 26, padding: '0 8px', fontSize: 11.5, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              onClick={() => refetchQuota()}
+              disabled={isQuotaLoading}
+              title="Làm mới hạn mức"
+            >
+              <ArrowsClockwise size={12} className={isQuotaLoading ? 'spin' : ''} />
+              <span>Làm mới</span>
+            </button>
+          </div>
         </div>
 
         {/* Danh sách mẫu tin ZNS đã duyệt */}
         <div className="card" style={{ marginBottom: 'var(--spacing-xl)', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: 'none' }}>
           <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '12px 18px' }}>
             <span className="card-header-title" style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
-              Danh sách mẫu tin ZNS đã duyệt ({selectedOa.templates?.length || 0})
+              Danh sách mẫu tin ZNS đã duyệt
             </span>
           </div>
 
@@ -461,6 +443,7 @@ export default function CustomerOAInfo() {
             onClose={() => setSelectedTemplate(null)}
             templateId={selectedTemplate.templateId}
             oaId={selectedOa.id}
+            initialData={selectedTemplate}
             isAdmin={false}
           />
         )}
@@ -488,7 +471,7 @@ export default function CustomerOAInfo() {
     <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
       {/* Header */}
       <div className="console-section-header">
-        <h1 className="console-section-title">Ứng dụng liên kết & API Key</h1>
+        <h1 className="console-section-title">Quản lý ứng dụng và API key</h1>
         <p className="console-section-desc">
           Danh sách các ứng dụng được cấp quyền cho tài khoản và khóa bảo mật API Key gửi tin ZNS
         </p>
@@ -589,9 +572,9 @@ export default function CustomerOAInfo() {
                         {/* Cột 4: Loại ứng dụng */}
                         <td>
                           {oa.isSystem ? (
-                            <span className="badge badge-primary">Ứng dụng hệ thống</span>
+                            <span className="badge badge-primary">Hệ thống</span>
                           ) : (
-                            <span className="badge badge-success">Ứng dụng riêng</span>
+                            <span className="badge badge-success">Cá nhân</span>
                           )}
                         </td>
 
@@ -647,7 +630,7 @@ export default function CustomerOAInfo() {
                         <td style={{ textAlign: 'right' }}>
                           <button
                             type="button"
-                            className="btn btn-sm btn-secondary"
+                            className="btn btn-sm btn-primary"
                             style={{
                               display: 'inline-flex',
                               alignItems: 'center',

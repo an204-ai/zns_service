@@ -77,9 +77,17 @@ async function resetPassword(req, res, next) {
 /** GET /api/v1/admin/oa-configs */
 async function listOAConfigs(req, res, next) {
   try {
-    const { userId, status, isSystem, page = 1, limit = 20 } = req.query;
+    const { userId, status, isSystem, type, search, page = 1, limit = 50 } = req.query;
     const isSystemBool = isSystem !== undefined ? isSystem === 'true' : undefined;
-    const result = await oaConfigService.getAllOAConfigs({ userId, status, isSystem: isSystemBool, page: +page, limit: +limit });
+    const result = await oaConfigService.getAllOAConfigs({
+      userId,
+      status,
+      isSystem: isSystemBool,
+      type,
+      search,
+      page: +page,
+      limit: +limit,
+    });
     res.json({ success: true, ...result });
   } catch (error) { next(error); }
 }
@@ -114,24 +122,42 @@ async function createSystemOAConfig(req, res, next) {
   } catch (error) { next(error); }
 }
 
-/** POST /api/v1/admin/customers/:id/assign-system-oa */
-async function assignSystemOA(req, res, next) {
+/** GET /api/v1/admin/customers/:id/available-apps */
+async function getAvailableAppsForCustomer(req, res, next) {
   try {
-    const targetId = req.body.appConfigId || req.body.oaConfigId;
-    if (!targetId) {
-      return res.status(400).json({ success: false, message: 'Vui lòng chọn Ứng dụng hệ thống cần gán' });
-    }
-    const result = await oaConfigService.assignSystemOA({ userId: req.params.id, appConfigId: targetId });
-    res.json({ success: true, data: result, message: 'Gán Ứng dụng hệ thống cho khách hàng thành công' });
+    const data = await oaConfigService.getAvailableAppsForCustomer(req.params.id);
+    res.json({ success: true, data });
   } catch (error) { next(error); }
 }
 
-/** DELETE /api/v1/admin/customers/:id/assign-system-oa/:oaId */
-async function unassignSystemOA(req, res, next) {
+/** POST /api/v1/admin/customers/:id/assign-app */
+async function assignAppToCustomer(req, res, next) {
   try {
-    await oaConfigService.unassignSystemOA({ userId: req.params.id, appConfigId: req.params.oaId });
-    res.json({ success: true, message: 'Đã hủy gán Ứng dụng hệ thống khỏi khách hàng' });
+    const targetId = req.body.appConfigId || req.body.oaConfigId;
+    if (!targetId) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn ứng dụng cần gán' });
+    }
+    const result = await oaConfigService.assignAppToCustomer({ userId: req.params.id, appConfigId: targetId });
+    res.json({ success: true, data: result, message: 'Gán ứng dụng cho khách hàng thành công' });
   } catch (error) { next(error); }
+}
+
+/** DELETE /api/v1/admin/customers/:id/unassign-app/:oaId */
+async function unassignAppFromCustomer(req, res, next) {
+  try {
+    await oaConfigService.unassignAppFromCustomer({ userId: req.params.id, appConfigId: req.params.oaId });
+    res.json({ success: true, message: 'Đã hủy gán ứng dụng khỏi khách hàng' });
+  } catch (error) { next(error); }
+}
+
+/** POST /api/v1/admin/customers/:id/assign-system-oa (backward compatibility) */
+async function assignSystemOA(req, res, next) {
+  return assignAppToCustomer(req, res, next);
+}
+
+/** DELETE /api/v1/admin/customers/:id/assign-system-oa/:oaId (backward compatibility) */
+async function unassignSystemOA(req, res, next) {
+  return unassignAppFromCustomer(req, res, next);
 }
 
 /** GET /api/v1/admin/oa-configs/:id */
@@ -146,19 +172,21 @@ async function getOAConfig(req, res, next) {
 /** POST /api/v1/admin/oa-configs */
 async function createOAConfig(req, res, next) {
   try {
-    const { userId, oaName, fptAppId, fptSecretKey } = req.body;
-    if (!userId || !oaName || !fptAppId || !fptSecretKey) {
+    const { userId, oaName, fptAppId, fptSecretKey, isSystem } = req.body;
+    if (!oaName || !fptAppId || !fptSecretKey) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin' });
     }
+    const isSys = isSystem === true || isSystem === 'true';
     const config = await oaConfigService.createOAConfig({
-      userId,
+      userId: isSys ? null : (userId || null),
       oaName: oaName.trim(),
       fptAppId: fptAppId.trim(),
       fptSecretKey: fptSecretKey.trim(),
+      isSystem: isSys,
     });
     const message = config.connectionWarning
-      ? `Tạo cấu hình OA thành công! (Lưu ý: ${config.connectionWarning})`
-      : 'Tạo cấu hình OA thành công';
+      ? `Thêm ứng dụng thành công! (Lưu ý: Chưa thể đồng bộ ngay từ FPT: ${config.connectionWarning})`
+      : 'Thêm ứng dụng thành công';
     res.status(201).json({ success: true, data: config, message });
   } catch (error) { next(error); }
 }
@@ -361,7 +389,8 @@ async function getTemplateRatings(req, res, next) {
 /** GET /api/v1/admin/oa-configs/:oaId/templates/:templateId/detail */
 async function getTemplateDetail(req, res, next) {
   try {
-    const detail = await oaConfigService.getTemplateLiveDetail(req.params.oaId, req.params.templateId);
+    const forceRefresh = req.query.refresh === 'true';
+    const detail = await oaConfigService.getTemplateLiveDetail(req.params.oaId, req.params.templateId, forceRefresh);
     res.json({ success: true, data: detail });
   } catch (error) { next(error); }
 }
@@ -372,6 +401,7 @@ module.exports = {
   listOAConfigs, getOAConfig, createOAConfig, syncOAConfig, updateOAStatus, deleteOAConfig, updateOAConfig,
   getOAQuota, getTemplateRatings, getTemplateDetail,
   listSystemOAConfigs, createSystemOAConfig, assignSystemOA, unassignSystemOA,
+  getAvailableAppsForCustomer, assignAppToCustomer, unassignAppFromCustomer,
   listTemplates, listMessages, getMessage, dashboard, getSystemLogs,
 };
 

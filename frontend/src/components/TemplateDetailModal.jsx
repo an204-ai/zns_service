@@ -21,9 +21,11 @@ export default function TemplateDetailModal({
   onClose,
   templateId,
   oaId,
+  initialData = null,
   isAdmin = false
 }) {
   const [activeTab, setActiveTab] = useState('info'); // 'info' | 'ratings'
+  const [isRefreshingDetail, setIsRefreshingDetail] = useState(false);
 
   // Rating filters (default 30 days)
   const defaultDates = () => {
@@ -52,9 +54,20 @@ export default function TemplateDetailModal({
     refetch: refetchDetail
   } = useQuery({
     queryKey: ['template-detail', oaId, templateId, isAdmin],
-    queryFn: () => api.get(detailEndpoint).then(r => r.data.data),
+    queryFn: () =>
+      api.get(detailEndpoint, {
+        params: { refresh: isRefreshingDetail ? 'true' : undefined }
+      }).then(r => {
+        setIsRefreshingDetail(false);
+        return r.data.data;
+      }).catch(err => {
+        setIsRefreshingDetail(false);
+        throw err;
+      }),
+    initialData: initialData || undefined,
     enabled: !!isOpen && !!templateId && !!oaId,
-    retry: 1,
+    retry: 0,
+    staleTime: 60000,
   });
 
   // Fetch ratings
@@ -80,11 +93,12 @@ export default function TemplateDetailModal({
       }).then(r => r.data.data),
     enabled: !!isOpen && !!templateId && !!oaId && activeTab === 'ratings',
     retry: 1,
+    staleTime: 30000,
   });
 
   if (!isOpen) return null;
 
-  const tpl = detailData || {};
+  const tpl = detailData || initialData || {};
   const params = tpl.listParams || [];
   const buttons = tpl.listButtons || [];
   const quality = tpl.templateQuality || 'UNDEFINED';
@@ -123,13 +137,16 @@ export default function TemplateDetailModal({
       >
         {/* Modal Header */}
         <div
+          className="modal-header"
           style={{
             padding: '16px 20px',
             borderBottom: '1px solid #e2e8f0',
             display: 'flex',
+            flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-between',
-            background: '#f8fafc'
+            background: '#f8fafc',
+            flexShrink: 0
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -139,7 +156,7 @@ export default function TemplateDetailModal({
                 height: 38,
                 borderRadius: 8,
                 background: '#eff6ff',
-                color: '#2563eb',
+                color: 'var(--color-primary)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -166,66 +183,85 @@ export default function TemplateDetailModal({
           <button
             type="button"
             className="modal-close"
-            style={{ position: 'static' }}
+            style={{ cursor: 'pointer' }}
             onClick={onClose}
           >
             <X size={18} />
           </button>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation (Bố cục 2 bên dạng hàng ngang) */}
         <div
+          className="modal-tabs"
           style={{
             display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
             borderBottom: '1px solid #e2e8f0',
-            background: '#ffffff',
-            padding: '0 20px'
+            background: '#f8fafc',
+            padding: '10px 20px',
+            flexShrink: 0,
+            width: '100%',
           }}
         >
           <button
             type="button"
             style={{
-              padding: '12px 16px',
-              border: 'none',
-              background: 'none',
-              fontSize: 13,
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: activeTab === 'info' ? '1.5px solid var(--color-primary)' : '1px solid #cbd5e1',
+              fontSize: 13.5,
               fontWeight: 600,
               cursor: 'pointer',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 8,
-              color: activeTab === 'info' ? '#2563eb' : '#64748b',
-              borderBottom: activeTab === 'info' ? '2px solid #2563eb' : '2px solid transparent',
-              transition: 'all 0.2s'
+              background: activeTab === 'info' ? 'var(--color-primary)' : '#ffffff',
+              color: activeTab === 'info' ? '#ffffff' : '#475569',
+              boxShadow: activeTab === 'info' ? '0 1px 3px rgba(30, 58, 138, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
             }}
             onClick={() => setActiveTab('info')}
           >
-            <FileText size={16} weight={activeTab === 'info' ? 'bold' : 'regular'} />
+            <FileText size={18} weight={activeTab === 'info' ? 'bold' : 'regular'} />
             Thông tin và Tham số
           </button>
 
           <button
             type="button"
             style={{
-              padding: '12px 16px',
-              border: 'none',
-              background: 'none',
-              fontSize: 13,
+              flex: 1,
+              padding: '10px 16px',
+              borderRadius: '8px',
+              border: activeTab === 'ratings' ? '1.5px solid var(--color-primary)' : '1px solid #cbd5e1',
+              fontSize: 13.5,
               fontWeight: 600,
               cursor: 'pointer',
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: 8,
-              color: activeTab === 'ratings' ? '#2563eb' : '#64748b',
-              borderBottom: activeTab === 'ratings' ? '2px solid #2563eb' : '2px solid transparent',
-              transition: 'all 0.2s'
+              background: activeTab === 'ratings' ? 'var(--color-primary)' : '#ffffff',
+              color: activeTab === 'ratings' ? '#ffffff' : '#475569',
+              boxShadow: activeTab === 'ratings' ? '0 1px 3px rgba(30, 58, 138, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
             }}
             onClick={() => setActiveTab('ratings')}
           >
-            <ChatCircleText size={16} weight={activeTab === 'ratings' ? 'bold' : 'regular'} />
+            <ChatCircleText size={18} weight={activeTab === 'ratings' ? 'bold' : 'regular'} />
             Đánh giá của người nhận tin
             {avgRate > 0 && (
-              <span style={{ background: '#fef3c7', color: '#b45309', padding: '1px 6px', borderRadius: 10, fontSize: 11, fontWeight: 700 }}>
+              <span style={{
+                background: activeTab === 'ratings' ? 'rgba(255, 255, 255, 0.25)' : '#fef3c7',
+                color: activeTab === 'ratings' ? '#ffffff' : '#b45309',
+                padding: '2px 8px',
+                borderRadius: 12,
+                fontSize: 11.5,
+                fontWeight: 700
+              }}>
                 {avgRate} ★
               </span>
             )}
@@ -266,7 +302,10 @@ export default function TemplateDetailModal({
                   <button
                     type="button"
                     className="btn btn-secondary btn-sm"
-                    onClick={() => refetchDetail()}
+                    onClick={() => {
+                      setIsRefreshingDetail(true);
+                      refetchDetail();
+                    }}
                     style={{ height: 26, padding: '0 8px', fontSize: 11.5 }}
                   >
                     Thử lại

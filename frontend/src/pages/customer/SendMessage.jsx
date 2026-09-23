@@ -7,6 +7,7 @@ import {
   PaperPlaneTilt, CheckCircle, Warning,
   ArrowSquareOut, Megaphone, ArrowCounterClockwise
 } from '@phosphor-icons/react';
+import CustomSelect from '../../components/CustomSelect';
 
 export default function CustomerSendMessage() {
   const toast = useToast();
@@ -133,44 +134,38 @@ export default function CustomerSendMessage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng gửi tin *</label>
-                <select
-                  className="form-select"
+                <CustomSelect
                   value={oaId}
-                  onChange={e => {
-                    setOaId(e.target.value);
+                  onChange={(val) => {
+                    setOaId(val);
                     setTemplateId('');
                     setParams({});
                   }}
-                  required
-                >
-                  <option value="">-- Chọn ứng dụng gửi tin --</option>
-                  {oaConfigs?.map(o => (
-                    <option key={o.id} value={o.id}>
-                      {o.isSystem ? `[Ứng dụng hệ thống] ${o.oaName}` : `[Ứng dụng riêng] ${o.oaName}`}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Chọn ứng dụng gửi tin"
+                  options={(oaConfigs || []).map(o => ({
+                    value: o.id,
+                    label: o.oaName,
+                    sublabel: o.isSystem ? 'Hệ thống' : 'Cá nhân',
+                  }))}
+                />
               </div>
 
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontWeight: 500 }}>Chọn mẫu tin nhắn (Template) *</label>
-                <select
-                  className="form-select"
+                <CustomSelect
                   value={templateId}
-                  onChange={e => {
-                    setTemplateId(e.target.value);
+                  onChange={(val) => {
+                    setTemplateId(val);
                     setParams({});
                   }}
                   disabled={!oaId}
-                  required
-                >
-                  <option value="">{oaId ? '-- Chọn mẫu tin nhắn --' : '-- Vui lòng chọn ứng dụng trước --'}</option>
-                  {selectedOA?.templates?.map(t => (
-                    <option key={t.templateId} value={t.templateId}>
-                      {t.templateName} (ID: {t.templateId})
-                    </option>
-                  ))}
-                </select>
+                  placeholder={oaId ? 'Chọn mẫu tin nhắn' : 'Vui lòng chọn ứng dụng trước'}
+                  options={(selectedOA?.templates || []).map(t => ({
+                    value: t.templateId,
+                    label: t.templateName,
+                    sublabel: `ID: ${t.templateId}`,
+                  }))}
+                />
               </div>
             </div>
 
@@ -273,7 +268,7 @@ export default function CustomerSendMessage() {
             <div style={{ display: 'flex', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
               <button
                 type="submit"
-                className="btn btn-success btn-lg"
+                className="btn btn-primary btn-lg"
                 disabled={sendMutation.isPending || !oaId || !templateId}
                 style={{
                   flex: 1,
@@ -282,6 +277,9 @@ export default function CustomerSendMessage() {
                   justifyContent: 'center',
                   gap: 8,
                   fontWeight: 600,
+                  backgroundColor: '#1e3a8a',
+                  borderColor: '#1e3a8a',
+                  color: '#ffffff',
                 }}
               >
                 <PaperPlaneTilt size={20} weight="fill" />

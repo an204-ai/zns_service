@@ -24,6 +24,7 @@ import {
   Sparkle,
   Info
 } from '@phosphor-icons/react';
+import CustomSelect from '../../components/CustomSelect';
 
 export default function AdminCustomerDetail() {
   const { id } = useParams();
@@ -33,12 +34,9 @@ export default function AdminCustomerDetail() {
 
   // Modals state
   const [showInfoModal, setShowInfoModal] = useState(false);
-  const [showSystemOaModal, setShowSystemOaModal] = useState(false);
-  const [selectedSystemOaId, setSelectedSystemOaId] = useState('');
-  
-  const [showPrivateOaModal, setShowPrivateOaModal] = useState(false);
-  const [privateOaForm, setPrivateOaForm] = useState({ oaName: '', fptAppId: '', fptSecretKey: '' });
-  const [privateOaError, setPrivateOaError] = useState('');
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedAppId, setSelectedAppId] = useState('');
+  const [modalFilter, setModalFilter] = useState('all'); // 'all' | 'system' | 'private'
 
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [newPassword, setNewPassword] = useState('');
@@ -52,10 +50,10 @@ export default function AdminCustomerDetail() {
     queryFn: () => api.get(`/admin/customers/${id}`).then(r => r.data.data),
   });
 
-  // Fetch System OAs for assignment dropdown
-  const { data: systemOAs } = useQuery({
-    queryKey: ['admin-oa-system'],
-    queryFn: () => api.get('/admin/oa-configs/system').then(r => r.data.data),
+  // Fetch available apps (System apps not yet assigned + Unassigned private apps)
+  const { data: availableAppsData, refetch: refetchAvailableApps } = useQuery({
+    queryKey: ['admin-customer-available-apps', id],
+    queryFn: () => api.get(`/admin/customers/${id}/available-apps`).then(r => r.data.data),
   });
 
   // Toggle status mutation
@@ -84,59 +82,36 @@ export default function AdminCustomerDetail() {
     },
   });
 
-  // Assign System OA mutation
-  const assignSystemMutation = useMutation({
-    mutationFn: (appConfigId) => api.post(`/admin/customers/${id}/assign-system-oa`, { appConfigId }),
+  // Assign App mutation (Supports both System Apps and Private Apps from pool)
+  const assignAppMutation = useMutation({
+    mutationFn: (appConfigId) => api.post(`/admin/customers/${id}/assign-app`, { appConfigId }),
     onSuccess: () => {
       refetch();
-      setShowSystemOaModal(false);
-      setSelectedSystemOaId('');
-      toast.success('Đã gán ứng dụng hệ thống và tự động cấp API Key cho khách hàng!');
+      refetchAvailableApps();
+      queryClient.invalidateQueries(['admin-oa-configs']);
+      setShowAssignModal(false);
+      setSelectedAppId('');
+      toast.success('Đã gán ứng dụng và tự động cấp API Key cho khách hàng!');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi gán ứng dụng hệ thống');
+      toast.error(err.response?.data?.message || 'Lỗi khi gán ứng dụng');
     },
   });
 
-  // Unassign System OA mutation
-  const unassignSystemMutation = useMutation({
-    mutationFn: (oaId) => api.delete(`/admin/customers/${id}/assign-system-oa/${oaId}`),
+  // Unassign App mutation (Unassigns System App or returns Private App to unassigned pool)
+  const unassignAppMutation = useMutation({
+    mutationFn: (oaId) => api.delete(`/admin/customers/${id}/unassign-app/${oaId}`),
     onSuccess: () => {
       refetch();
-      toast.success('Đã gỡ ứng dụng hệ thống khỏi khách hàng');
+      refetchAvailableApps();
+      queryClient.invalidateQueries(['admin-oa-configs']);
+      toast.success('Đã gỡ ứng dụng khỏi khách hàng thành công');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi gỡ ứng dụng hệ thống');
+      toast.error(err.response?.data?.message || 'Lỗi khi gỡ ứng dụng');
     },
   });
 
-  // Create Private OA mutation
-  const createPrivateMutation = useMutation({
-    mutationFn: (formData) => api.post(`/admin/customers/${id}/private-oa`, formData),
-    onSuccess: () => {
-      refetch();
-      setShowPrivateOaModal(false);
-      setPrivateOaForm({ oaName: '', fptAppId: '', fptSecretKey: '' });
-      toast.success('Tạo ứng dụng riêng thành công và đã tự động cấp API Key!');
-    },
-    onError: (err) => {
-      const msg = err.response?.data?.message || 'Không thể tạo ứng dụng riêng. Vui lòng kiểm tra lại FPT App ID và Secret Key';
-      setPrivateOaError(msg);
-      toast.error(msg);
-    },
-  });
-
-  // Delete Private OA mutation
-  const deletePrivateMutation = useMutation({
-    mutationFn: (oaId) => api.delete(`/admin/customers/${id}/private-oa/${oaId}`),
-    onSuccess: () => {
-      refetch();
-      toast.success('Đã xóa ứng dụng riêng khỏi khách hàng');
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi xóa ứng dụng riêng');
-    },
-  });
 
   // Regenerate API Key mutation
   const regenerateKeyMutation = useMutation({
@@ -196,13 +171,9 @@ export default function AdminCustomerDetail() {
     );
   }
 
-  const assignedSystemOaIds = (customer.allOAs || [])
-    .filter(oa => oa.type === 'SYSTEM')
-    .map(oa => oa.id);
-
-  const availableSystemOAs = (systemOAs || []).filter(
-    oa => !assignedSystemOaIds.includes(oa.id) && oa.status === 'ACTIVE'
-  );
+  const availableSystemApps = availableAppsData?.systemApps || [];
+  const availablePrivateApps = availableAppsData?.privateApps || [];
+  const totalAvailableCount = availableSystemApps.length + availablePrivateApps.length;
 
   return (
     <div>
@@ -218,124 +189,137 @@ export default function AdminCustomerDetail() {
         </button>
       </div>
 
-      {/* Customer Header Row */}
-      <div className="page-header-row" style={{ alignItems: 'flex-start', marginBottom: 'var(--spacing-lg)' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <h1 className="page-header-title" style={{ margin: 0 }}>{customer.fullName}</h1>
-            <span className={`badge ${customer.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'}`}>
-              {customer.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'}
-            </span>
+      {/* Customer Header Card */}
+      <div
+        className="card"
+        style={{
+          padding: '16px 20px',
+          marginBottom: 'var(--spacing-lg)',
+          background: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid #e2e8f0',
+          boxShadow: 'none',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
+              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>{customer.fullName}</h1>
+              {customer.status === 'ACTIVE' ? (
+                <span className="badge-active-pill">Đang hoạt động</span>
+              ) : (
+                <span className="badge-inactive-pill">Đã khóa</span>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowInfoModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 24,
+                  height: 24,
+                  borderRadius: '50%',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#2563eb',
+                  cursor: 'pointer',
+                  padding: 0,
+                  transition: 'all 0.15s ease',
+                }}
+                title="Bấm để xem đầy đủ thông tin tài khoản"
+              >
+                <Info size={14} weight="bold" />
+              </button>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                <EnvelopeSimple size={13} color="#64748b" weight="bold" />
+                {customer.email}
+              </div>
+              {customer.phone && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                  <Phone size={13} color="#64748b" weight="bold" />
+                  {customer.phone}
+                </div>
+              )}
+              {customer.companyName && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                  <Buildings size={13} color="#64748b" weight="bold" />
+                  {customer.companyName}
+                </div>
+              )}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                <CalendarBlank size={13} color="#64748b" weight="bold" />
+                {new Date(customer.createdAt).toLocaleDateString('vi-VN')}
+              </div>
+            </div>
+          </div>
+
+          {/* Action buttons on the right side */}
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
             <button
               type="button"
-              onClick={() => setShowInfoModal(true)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: 26,
-                height: 26,
-                borderRadius: '50%',
-                background: '#eff6ff',
-                border: '1px solid #bfdbfe',
-                color: '#2563eb',
-                cursor: 'pointer',
-                padding: 0,
-                transition: 'all 0.15s ease',
+              className="btn btn-sm btn-secondary"
+              onClick={() => {
+                setShowPasswordModal(true);
+                setNewPassword('');
               }}
-              title="Bấm để xem đầy đủ thông tin tài khoản"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, height: 32, padding: '0 10px' }}
             >
-              <Info size={15} weight="bold" />
+              <Lock size={13} /> Đổi mật khẩu
+            </button>
+
+            <button
+              type="button"
+              className={`btn btn-sm ${customer.status === 'ACTIVE' ? 'btn-secondary' : 'btn-success'}`}
+              onClick={() => {
+                const nextStatus = customer.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
+                const actionName = nextStatus === 'BLOCKED' ? 'khóa' : 'mở khóa';
+                if (window.confirm(`Bạn có chắc chắn muốn ${actionName} tài khoản "${customer.fullName}"?`)) {
+                  toggleStatusMutation.mutate(nextStatus);
+                }
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, height: 32, padding: '0 10px' }}
+            >
+              {customer.status === 'ACTIVE' ? <Lock size={13} /> : <LockOpen size={13} />}
+              {customer.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Kích hoạt tài khoản'}
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-sm btn-danger"
+              onClick={() => {
+                if (window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa khách hàng "${customer.fullName}"? Tất cả dữ liệu, OA riêng và tin nhắn liên quan sẽ bị xóa vĩnh viễn!`)) {
+                  deleteCustomerMutation.mutate();
+                }
+              }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, height: 32, padding: '0 10px' }}
+            >
+              <Trash size={13} /> Xóa tài khoản
             </button>
           </div>
-          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-            {customer.companyName && <span>{customer.companyName}</span>}
-            {customer.companyName && <span>•</span>}
-            <span>{customer.email}</span>
-            {customer.phone && (
-              <>
-                <span>•</span>
-                <span>{customer.phone}</span>
-              </>
-            )}
-            <span>•</span>
-            <span>Khởi tạo: {new Date(customer.createdAt).toLocaleDateString('vi-VN')}</span>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={() => {
-              setShowPasswordModal(true);
-              setNewPassword('');
-            }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          >
-            <Lock size={15} /> Đổi mật khẩu
-          </button>
-
-          <button
-            type="button"
-            className={`btn ${customer.status === 'ACTIVE' ? 'btn-secondary' : 'btn-success'}`}
-            onClick={() => {
-              const nextStatus = customer.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE';
-              const actionName = nextStatus === 'BLOCKED' ? 'khóa' : 'mở khóa';
-              if (window.confirm(`Bạn có chắc chắn muốn ${actionName} tài khoản "${customer.fullName}"?`)) {
-                toggleStatusMutation.mutate(nextStatus);
-              }
-            }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          >
-            {customer.status === 'ACTIVE' ? <Lock size={15} /> : <LockOpen size={15} />}
-            {customer.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Kích hoạt tài khoản'}
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={() => {
-              if (window.confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa khách hàng "${customer.fullName}"? Tất cả dữ liệu, OA riêng và tin nhắn liên quan sẽ bị xóa vĩnh viễn!`)) {
-                deleteCustomerMutation.mutate();
-              }
-            }}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-          >
-            <Trash size={15} /> Xóa tài khoản
-          </button>
         </div>
       </div>
 
       {/* Section: Zalo OAs & Attached API Keys */}
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
-          <span className="card-header-title">Danh sách Ứng dụng liên kết và API Key ({customer.allOAs?.length || 0})</span>
+          <span className="card-header-title">Danh sách Ứng dụng liên kết và API Key</span>
 
-          <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-              onClick={() => setShowSystemOaModal(true)}
-            >
-              <ShieldCheck size={16} color="#2563eb" weight="fill" />
-              Gán ứng dụng hệ thống
-            </button>
-
+          <div>
             <button
               type="button"
               className="btn btn-primary btn-sm"
               style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
               onClick={() => {
-                setShowPrivateOaModal(true);
-                setPrivateOaError('');
-                setPrivateOaForm({ oaName: '', fptAppId: '', fptSecretKey: '' });
+                setShowAssignModal(true);
+                setSelectedAppId('');
+                setModalFilter('all');
               }}
             >
-              <Plus size={16} weight="bold" />
-              Thêm ứng dụng riêng
+              <ShieldCheck size={16} weight="fill" />
+              Gán ứng dụng
             </button>
           </div>
         </div>
@@ -368,9 +352,9 @@ export default function AdminCustomerDetail() {
                   </td>
                   <td>
                     {oa.type === 'SYSTEM' ? (
-                      <span className="badge badge-primary">Ứng dụng hệ thống</span>
+                      <span className="badge badge-primary">Hệ thống</span>
                     ) : (
-                      <span className="badge badge-success">Ứng dụng riêng</span>
+                      <span className="badge badge-success">Cá nhân</span>
                     )}
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>
@@ -437,16 +421,13 @@ export default function AdminCustomerDetail() {
                       <button
                         type="button"
                         className="btn btn-sm btn-danger"
-                        title={oa.type === 'SYSTEM' ? 'Gỡ ứng dụng hệ thống' : 'Xóa ứng dụng riêng'}
+                        title={oa.type === 'SYSTEM' ? 'Gỡ ứng dụng hệ thống' : 'Gỡ ứng dụng cá nhân khỏi khách hàng'}
                         onClick={() => {
-                          if (oa.type === 'SYSTEM') {
-                            if (window.confirm(`Bạn có chắc muốn gỡ ứng dụng hệ thống "${oa.oaName}" khỏi khách hàng này?`)) {
-                              unassignSystemMutation.mutate(oa.id);
-                            }
-                          } else {
-                            if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn ứng dụng riêng "${oa.oaName}" khỏi khách hàng này?`)) {
-                              deletePrivateMutation.mutate(oa.id);
-                            }
+                          const confirmMsg = oa.type === 'SYSTEM'
+                            ? `Bạn có chắc muốn gỡ ứng dụng hệ thống "${oa.oaName}" khỏi khách hàng này?`
+                            : `Bạn có chắc muốn gỡ ứng dụng cá nhân "${oa.oaName}" khỏi khách hàng này? Ứng dụng sẽ được trả về kho ứng dụng để có thể gán lại sau này.`;
+                          if (window.confirm(confirmMsg)) {
+                            unassignAppMutation.mutate(oa.id);
                           }
                         }}
                       >
@@ -462,7 +443,7 @@ export default function AdminCustomerDetail() {
                   <td colSpan={7} className="empty-state">
                     <div className="empty-state-title">Khách hàng chưa có ứng dụng liên kết nào</div>
                     <div className="empty-state-text">
-                      Bấm vào "Gán ứng dụng hệ thống" hoặc "Thêm ứng dụng riêng" ở trên để kết nối cho khách hàng
+                      Bấm vào "Gán ứng dụng" ở trên để kết nối ứng dụng cho khách hàng
                     </div>
                   </td>
                 </tr>
@@ -472,149 +453,119 @@ export default function AdminCustomerDetail() {
         </div>
       </div>
 
-      {/* Modal: Gán OA Hệ thống */}
-      {showSystemOaModal && (
-        <div className="modal-overlay" onClick={() => setShowSystemOaModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+      {/* Modal: Gán Ứng dụng (Hệ thống hoặc Riêng từ kho) */}
+      {/* Modal: Gán Ứng dụng */}
+      {showAssignModal && (
+        <div className="modal-overlay" onClick={() => setShowAssignModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 560 }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <ShieldCheck size={22} color="#2563eb" weight="fill" />
-                <h2 className="modal-title">Gán ứng dụng hệ thống cho khách hàng</h2>
+                <h2 className="modal-title">Gán ứng dụng cho khách hàng</h2>
               </div>
-              <button type="button" className="modal-close" onClick={() => setShowSystemOaModal(false)}>
+              <button type="button" className="modal-close" onClick={() => setShowAssignModal(false)}>
                 <X size={18} />
               </button>
             </div>
 
-            <div className="modal-body">
-              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-md)' }}>
-                Chọn một ứng dụng hệ thống đang hoạt động để cấp quyền gửi tin cho <strong>{customer.fullName}</strong>:
+            <div className="modal-body" style={{ minHeight: 240, paddingBottom: 40 }}>
+              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 14 }}>
+                Chọn một ứng dụng từ kho ứng dụng để cấp quyền gửi tin cho khách hàng <strong>{customer.fullName}</strong>:
               </p>
 
-              <div className="form-group">
-                <label className="form-label">Chọn ứng dụng hệ thống *</label>
-                <select
-                  className="form-input"
-                  value={selectedSystemOaId}
-                  onChange={e => setSelectedSystemOaId(e.target.value)}
+              {/* Tabs lọc loại ứng dụng */}
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${modalFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => {
+                    setModalFilter('all');
+                    setSelectedAppId('');
+                  }}
+                  style={{
+                    borderRadius: 6,
+                    fontWeight: modalFilter === 'all' ? 600 : 500,
+                  }}
                 >
-                  <option value="">-- Chọn ứng dụng hệ thống --</option>
-                  {availableSystemOAs.map(oa => (
-                    <option key={oa.id} value={oa.id}>
-                      {oa.oaName} (Mã OA: {oa.oaId || 'N/A'}) - {oa._count?.templates || 0} mẫu tin
-                    </option>
-                  ))}
-                </select>
-                {!availableSystemOAs.length && (
-                  <span style={{ fontSize: 'var(--font-size-xs)', color: '#ea580c', marginTop: 4, display: 'block' }}>
-                    Không có ứng dụng hệ thống nào khả dụng hoặc tất cả ứng dụng hệ thống đã được gán cho khách này.
+                  Tất cả
+                </button>
+
+                <button
+                  type="button"
+                  className={`btn btn-sm ${modalFilter === 'system' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => {
+                    setModalFilter('system');
+                    setSelectedAppId('');
+                  }}
+                  style={{
+                    borderRadius: 6,
+                    fontWeight: modalFilter === 'system' ? 600 : 500,
+                  }}
+                >
+                  Hệ thống
+                </button>
+
+                <button
+                  type="button"
+                  className={`btn btn-sm ${modalFilter === 'private' ? 'btn-primary' : 'btn-secondary'}`}
+                  onClick={() => {
+                    setModalFilter('private');
+                    setSelectedAppId('');
+                  }}
+                  style={{
+                    borderRadius: 6,
+                    fontWeight: modalFilter === 'private' ? 600 : 500,
+                  }}
+                >
+                  Cá nhân
+                </button>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" style={{ fontWeight: 600 }}>Chọn ứng dụng khả dụng *</label>
+                <CustomSelect
+                  value={selectedAppId}
+                  onChange={setSelectedAppId}
+                  placeholder="Chọn ứng dụng cần gán"
+                  options={(modalFilter === 'system'
+                    ? availableSystemApps
+                    : modalFilter === 'private'
+                    ? availablePrivateApps
+                    : [...availableSystemApps, ...availablePrivateApps]
+                  ).map(oa => ({
+                    value: oa.id,
+                    label: oa.oaName,
+                    sublabel: `${oa.isSystem ? 'Hệ thống' : 'Cá nhân'} \u2022 ${oa._count?.templates || 0} mẫu tin`,
+                  }))}
+                />
+
+                {((modalFilter === 'all' && totalAvailableCount === 0) ||
+                  (modalFilter === 'system' && availableSystemApps.length === 0) ||
+                  (modalFilter === 'private' && availablePrivateApps.length === 0)) && (
+                  <span style={{ fontSize: 'var(--font-size-xs)', color: '#ea580c', marginTop: 8, display: 'block' }}>
+                    {modalFilter === 'system'
+                      ? 'Không có ứng dụng hệ thống nào khả dụng để gán.'
+                      : modalFilter === 'private'
+                      ? 'Không có ứng dụng cá nhân nào còn trống trong kho. Vui lòng tạo thêm tại trang Quản lý ứng dụng.'
+                      : 'Không có ứng dụng khả dụng nào. Vui lòng vào trang Quản lý ứng dụng để tạo thêm.'}
                   </span>
                 )}
               </div>
             </div>
 
             <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" onClick={() => setShowSystemOaModal(false)}>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAssignModal(false)}>
                 Hủy
               </button>
               <button
                 type="button"
                 className="btn btn-primary"
-                disabled={!selectedSystemOaId || assignSystemMutation.isPending}
-                onClick={() => assignSystemMutation.mutate(selectedSystemOaId)}
+                disabled={!selectedAppId || assignAppMutation.isPending}
+                onClick={() => assignAppMutation.mutate(selectedAppId)}
               >
-                {assignSystemMutation.isPending ? 'Đang gán...' : 'Xác nhận gán ứng dụng'}
+                {assignAppMutation.isPending ? 'Đang gán...' : 'Xác nhận gán ứng dụng'}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Modal: Thêm Ứng dụng Riêng */}
-      {showPrivateOaModal && (
-        <div className="modal-overlay" onClick={() => setShowPrivateOaModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Broadcast size={22} color="#10b981" weight="fill" />
-                <h2 className="modal-title">Thêm ứng dụng riêng cho khách hàng</h2>
-              </div>
-              <button type="button" className="modal-close" onClick={() => setShowPrivateOaModal(false)}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <form onSubmit={(e) => {
-              e.preventDefault();
-              setPrivateOaError('');
-              if (!privateOaForm.fptAppId.trim() || !privateOaForm.fptSecretKey.trim()) {
-                setPrivateOaError('Vui lòng điền FPT App ID và Secret Key');
-                return;
-              }
-              createPrivateMutation.mutate(privateOaForm);
-            }}>
-              <div className="modal-body">
-                {privateOaError && (
-                  <div
-                    style={{
-                      background: '#fef2f2',
-                      border: '1px solid #fecaca',
-                      color: '#dc2626',
-                      padding: '10px 14px',
-                      borderRadius: 'var(--border-radius-sm)',
-                      fontSize: 'var(--font-size-xs)',
-                      marginBottom: 'var(--spacing-md)',
-                    }}
-                  >
-                    {privateOaError}
-                  </div>
-                )}
-
-                <div className="form-group">
-                  <label className="form-label">Tên gợi nhớ ứng dụng</label>
-                  <input
-                    className="form-input"
-                    placeholder={`Ví dụ: Ứng dụng ${customer.companyName || customer.fullName}`}
-                    value={privateOaForm.oaName}
-                    onChange={e => setPrivateOaForm({ ...privateOaForm, oaName: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">FPT App ID *</label>
-                  <input
-                    className="form-input"
-                    placeholder="App ID FPT cung cấp cho khách hàng"
-                    value={privateOaForm.fptAppId}
-                    onChange={e => setPrivateOaForm({ ...privateOaForm, fptAppId: e.target.value })}
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label className="form-label">FPT Secret Key *</label>
-                  <input
-                    type="password"
-                    className="form-input"
-                    placeholder="Secret Key FPT cung cấp cho khách hàng"
-                    value={privateOaForm.fptSecretKey}
-                    onChange={e => setPrivateOaForm({ ...privateOaForm, fptSecretKey: e.target.value })}
-                  />
-                </div>
-              </div>
-
-              <div className="modal-footer">
-                <button type="button" className="btn btn-secondary" onClick={() => setShowPrivateOaModal(false)}>
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  disabled={createPrivateMutation.isPending}
-                >
-                  {createPrivateMutation.isPending ? 'Đang kết nối FPT...' : 'Tạo và cấp API Key'}
-                </button>
-              </div>
-            </form>
           </div>
         </div>
       )}

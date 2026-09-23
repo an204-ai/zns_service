@@ -18,6 +18,9 @@ router.patch('/customers/:id/status', admin.updateStatus);
 router.post('/customers/:id/reset-password', admin.resetPassword);
 router.delete('/customers/:id', admin.deleteCustomer);
 // Customer OA / App assignment
+router.get('/customers/:id/available-apps', admin.getAvailableAppsForCustomer);
+router.post('/customers/:id/assign-app', admin.assignAppToCustomer);
+router.delete('/customers/:id/unassign-app/:oaId', admin.unassignAppFromCustomer);
 router.post('/customers/:id/assign-system-oa', admin.assignSystemOA);
 router.post('/customers/:id/assign-system-app', admin.assignSystemOA);
 router.delete('/customers/:id/assign-system-oa/:oaId', admin.unassignSystemOA);

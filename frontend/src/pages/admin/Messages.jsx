@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import { MagnifyingGlass } from '@phosphor-icons/react';
 import Pagination from '../../components/Pagination';
+import CustomSelect from '../../components/CustomSelect';
 
 export default function AdminMessages() {
   const [filters, setFilters] = useState({ phone: '', status: '', page: 1, limit: 10 });
@@ -35,9 +36,9 @@ export default function AdminMessages() {
         <p className="console-section-desc">Theo dõi toàn bộ tin nhắn ZNS gửi qua hệ thống đại lý</p>
       </div>
 
-      <div className="console-toolbar">
-        <div className="console-toolbar-left">
-          <div className="console-search-wrapper">
+      <div className="console-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-md)' }}>
+        <div className="console-toolbar-left" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div className="console-search-wrapper" style={{ width: 240 }}>
             <MagnifyingGlass weight="bold" />
             <input
               type="text"
@@ -47,26 +48,20 @@ export default function AdminMessages() {
               onChange={(e) => setFilters({ ...filters, phone: e.target.value, page: 1 })}
             />
           </div>
-          <select
-            className="filter-select"
-            style={{
-              height: 36,
-              padding: '0 12px',
-              fontSize: 13,
-              borderRadius: 6,
-              border: '1px solid #e2e8f0',
-              background: '#ffffff',
-              color: '#0f172a',
-            }}
-            value={filters.status}
-            onChange={(e) => setFilters({ ...filters, status: e.target.value, page: 1 })}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="QUEUED">Đang chờ</option>
-            <option value="SENT">Đã gửi</option>
-            <option value="SUCCESS">Thành công</option>
-            <option value="FAILED">Thất bại</option>
-          </select>
+          <div style={{ width: 190 }}>
+            <CustomSelect
+              value={filters.status}
+              onChange={(val) => setFilters({ ...filters, status: val, page: 1 })}
+              placeholder="Tất cả trạng thái"
+              options={[
+                { value: '', label: 'Tất cả trạng thái' },
+                { value: 'QUEUED', label: 'Đang chờ' },
+                { value: 'SENT', label: 'Đã gửi' },
+                { value: 'SUCCESS', label: 'Thành công' },
+                { value: 'FAILED', label: 'Thất bại' },
+              ]}
+            />
+          </div>
         </div>
       </div>
 

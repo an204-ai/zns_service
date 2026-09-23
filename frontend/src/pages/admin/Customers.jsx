@@ -9,6 +9,7 @@ import {
   EnvelopeSimple, Sparkle, ShieldCheck, Trash, X
 } from '@phosphor-icons/react';
 import Pagination from '../../components/Pagination';
+import CustomSelect from '../../components/CustomSelect';
 
 export default function AdminCustomers() {
   const queryClient = useQueryClient();
@@ -325,17 +326,22 @@ export default function AdminCustomers() {
 
                         <td onClick={(e) => e.stopPropagation()}>
                           {hasAnyApp ? (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                              {hasPrivateApp && (
-                                <span className="badge badge-success" style={{ fontSize: 11, fontWeight: 500 }}>
-                                  Ứng dụng riêng ({userApps.length})
-                                </span>
-                              )}
-                              {hasSystemApp && (
-                                <span className="badge badge-primary" style={{ fontSize: 11, fontWeight: 500 }}>
-                                  Ứng dụng hệ thống ({systemApps.length})
-                                </span>
-                              )}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+                              {userApps.map(app => (
+                                <div key={app.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                  <span style={{ fontSize: 12.5, color: '#0f172a', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }} title={app.oaName}>{app.oaName}</span>
+                                  <span style={{ fontSize: 10, fontWeight: 500, padding: '1px 5px', borderRadius: 3, background: '#f0fdf4', color: '#15803d', border: '1px solid #bbf7d0', whiteSpace: 'nowrap' }}>Cá nhân</span>
+                                </div>
+                              ))}
+                              {systemApps.map(sa => {
+                                const app = sa.appConfig || sa.oaConfig || sa;
+                                return (
+                                  <div key={sa.id || app.id} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                                    <span style={{ fontSize: 12.5, color: '#0f172a', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 140 }} title={app.oaName}>{app.oaName}</span>
+                                    <span style={{ fontSize: 10, fontWeight: 500, padding: '1px 5px', borderRadius: 3, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', whiteSpace: 'nowrap' }}>Hệ thống</span>
+                                  </div>
+                                );
+                              })}
                             </div>
                           ) : (
                             <button
@@ -606,18 +612,16 @@ export default function AdminCustomers() {
                 <div className="modal-body">
                   <div className="form-group">
                     <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng hệ thống cần gán *</label>
-                    <select
-                      className="form-select"
+                    <CustomSelect
                       value={selectedSystemOaId}
-                      onChange={e => setSelectedSystemOaId(e.target.value)}
-                    >
-                      <option value="">-- Chọn ứng dụng hệ thống đang hoạt động --</option>
-                      {systemOAs?.filter(s => s.status === 'ACTIVE').map(s => (
-                        <option key={s.id} value={s.id}>
-                          {s.oaName} ({s._count?.templates || 0} mẫu tin)
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setSelectedSystemOaId}
+                      placeholder="Chọn ứng dụng hệ thống đang hoạt động"
+                      options={(systemOAs?.filter(s => s.status === 'ACTIVE') || []).map(s => ({
+                        value: s.id,
+                        label: s.oaName,
+                        sublabel: `${s._count?.templates || 0} mẫu tin`,
+                      }))}
+                    />
                   </div>
 
                   <button

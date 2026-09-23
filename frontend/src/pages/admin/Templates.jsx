@@ -5,6 +5,8 @@ import Pagination from '../../components/Pagination';
 import TemplateDetailModal from '../../components/TemplateDetailModal';
 import { CaretRight } from '@phosphor-icons/react';
 
+import CustomSelect from '../../components/CustomSelect';
+
 export default function AdminTemplates() {
   const [oaFilter, setOaFilter] = useState('');
   const [page, setPage] = useState(1);
@@ -28,17 +30,21 @@ export default function AdminTemplates() {
         <p className="console-section-desc">Danh sách mẫu tin ZNS đã duyệt và đồng bộ từ Zalo</p>
       </div>
 
-      <div className="console-toolbar">
-        <div className="console-toolbar-left">
-          <select
-            className="filter-select"
-            style={{ height: 36, padding: '0 12px', fontSize: 13, borderRadius: 6, border: '1px solid #e2e8f0', background: '#ffffff', color: '#0f172a' }}
+      <div className="console-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-md)' }}>
+        <div className="console-toolbar-left" style={{ width: 250 }}>
+          <CustomSelect
             value={oaFilter}
-            onChange={e => { setOaFilter(e.target.value); setPage(1); }}
-          >
-            <option value="">Tất cả ứng dụng liên kết</option>
-            {oaConfigs?.map(oa => <option key={oa.id} value={oa.id}>{oa.oaName}</option>)}
-          </select>
+            onChange={val => { setOaFilter(val); setPage(1); }}
+            placeholder="Tất cả ứng dụng liên kết"
+            options={[
+              { value: '', label: 'Tất cả ứng dụng liên kết' },
+              ...(oaConfigs || []).map(oa => ({
+                value: oa.id,
+                label: oa.oaName,
+                sublabel: oa.isSystem ? 'Ứng dụng hệ thống' : 'Ứng dụng cá nhân',
+              })),
+            ]}
+          />
         </div>
       </div>
 
@@ -147,6 +153,7 @@ export default function AdminTemplates() {
           onClose={() => setSelectedTemplate(null)}
           templateId={selectedTemplate.templateId}
           oaId={selectedTemplate.fptAppConfigId || selectedTemplate.fptAppConfig?.id}
+          initialData={selectedTemplate}
           isAdmin={true}
         />
       )}

@@ -16,6 +16,8 @@ import {
   X,
   CheckCircle,
   Building,
+  Buildings,
+  User,
   CalendarBlank,
   CaretRight,
   IdentificationBadge,
@@ -26,6 +28,7 @@ import {
   WarningCircle
 } from '@phosphor-icons/react';
 import TemplateDetailModal from '../../components/TemplateDetailModal';
+import CustomSelect from '../../components/CustomSelect';
 
 export default function AdminOADetail() {
   const { id } = useParams();
@@ -212,214 +215,231 @@ export default function AdminOADetail() {
         </button>
       </div>
 
-      {/* Main Header */}
+      {/* Main Header with Integrated Compact Quota Strip */}
       <div
         className="card"
         style={{
           padding: '16px 20px',
           marginBottom: 'var(--spacing-lg)',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-              {oa.oaName}
-            </h1>
-            {oa.status === 'ACTIVE' ? (
-              <span className="badge-active-pill">Đang hoạt động</span>
-            ) : (
-              <span className="badge-inactive-pill">Tạm dừng</span>
-            )}
-          </div>
-          <div style={{ fontSize: 12.5, color: '#64748b', marginTop: 3 }}>
-            App ID: <span style={{ color: '#0f172a', fontFamily: 'monospace', fontWeight: 500 }}>{oa.fptAppId || '—'}</span>
-            {oa.oaId ? <> • Mã OA: <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{oa.oaId}</span></> : null}
-            {' '}• Khởi tạo: {new Date(oa.createdAt).toLocaleDateString('vi-VN')}
-          </div>
-        </div>
-
-        {/* Header Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            onClick={handleOpenEdit}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 14px' }}
-          >
-            <PencilSimple size={15} />
-            <span>Sửa thông tin</span>
-          </button>
-
-          <button
-            type="button"
-            className="btn btn-danger"
-            onClick={() => {
-              if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${oa.oaName}"? Hành động này không thể hoàn tác!`)) {
-                deleteMutation.mutate();
-              }
-            }}
-            disabled={deleteMutation.isPending}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '7px 14px' }}
-            title="Xóa ứng dụng"
-          >
-            <Trash size={15} />
-            <span>Xóa ứng dụng</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Section 0: Hạn mức gửi tin ZNS (Quota) */}
-      <div
-        className="card"
-        style={{
-          marginBottom: 'var(--spacing-xl)',
-          padding: '16px 20px',
-          border: '1px solid #e2e8f0',
-          borderRadius: 8,
           background: '#ffffff',
+          borderRadius: 8,
+          border: '1px solid #e2e8f0',
           boxShadow: 'none',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Gauge size={20} color="#0284c7" weight="bold" />
-            <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-              Hạn mức gửi tin ZNS (Quota)
-            </h2>
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 12,
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                {oa.oaName}
+              </h1>
+              {oa.status === 'ACTIVE' ? (
+                <span className="badge-active-pill">Đang hoạt động</span>
+              ) : (
+                <span className="badge-inactive-pill">Tạm dừng</span>
+              )}
+              {oa.isSystem ? (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: '#eff6ff',
+                    color: '#1d4ed8',
+                    border: '1px solid #bfdbfe',
+                  }}
+                >
+                  <Buildings size={13} weight="bold" />
+                  Ứng dụng hệ thống
+                </span>
+              ) : (
+                <span
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 4,
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: '#f5f3ff',
+                    color: '#6d28d9',
+                    border: '1px solid #ddd6fe',
+                  }}
+                >
+                  <User size={13} weight="bold" />
+                  Ứng dụng cá nhân
+                </span>
+              )}
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                App ID: <span style={{ color: '#0f172a', fontFamily: 'monospace', fontWeight: 500 }}>{oa.fptAppId || '—'}</span>
+              </div>
+              {oa.oaId && (
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                  <IdentificationBadge size={13} color="#64748b" weight="bold" />
+                  Mã OA: <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{oa.oaId}</span>
+                </div>
+              )}
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
+                <CalendarBlank size={13} color="#64748b" weight="bold" />
+                {new Date(oa.createdAt).toLocaleDateString('vi-VN')}
+              </div>
+            </div>
           </div>
+
+          {/* Header Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={handleOpenEdit}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+            >
+              <PencilSimple size={15} />
+              <span>Sửa thông tin</span>
+            </button>
+
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => {
+                if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${oa.oaName}"? Hành động này không thể hoàn tác!`)) {
+                  deleteMutation.mutate();
+                }
+              }}
+              disabled={deleteMutation.isPending}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+              title="Xóa ứng dụng"
+            >
+              <Trash size={15} />
+              <span>Xóa ứng dụng</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Thanh Hạn Mức Tinh Gọn (Compact Quota Strip) - Chỉ 1 dòng thanh lịch */}
+        <div
+          style={{
+            marginTop: 14,
+            paddingTop: 12,
+            borderTop: '1px solid #f1f5f9',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: 10,
+            fontSize: 12.5,
+          }}
+        >
+          {isQuotaLoading ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b' }}>
+              <div className="spinner" style={{ width: 14, height: 14 }} />
+              <span>Đang kiểm tra hạn mức từ máy chủ FPT...</span>
+            </div>
+          ) : isQuotaError ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#991b1b', flexWrap: 'wrap' }}>
+              <WarningCircle size={16} color="#dc2626" weight="bold" />
+              <span>
+                Không thể lấy hạn mức FPT: <span style={{ color: '#b91c1c' }}>{quotaError?.response?.data?.message || quotaError?.message || 'Timeout / Lỗi kết nối'}</span>
+              </span>
+              <button
+                type="button"
+                className="btn btn-sm btn-secondary"
+                onClick={() => refetchQuota()}
+                style={{
+                  height: 24,
+                  padding: '0 8px',
+                  fontSize: 11.5,
+                  color: '#991b1b',
+                  borderColor: '#fca5a5',
+                  background: '#fef2f2',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+              >
+                <ArrowsClockwise size={12} /> Thử lại
+              </button>
+            </div>
+          ) : quota ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#334155' }}>
+                <Gauge size={16} color="#0284c7" weight="bold" />
+                <span style={{ color: '#64748b' }}>Hạn mức hôm nay:</span>
+                <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                  {quota.remainingQuota?.toLocaleString('vi-VN') || 0}{' '}
+                  <span style={{ fontWeight: 500, color: '#64748b', fontSize: 11.5 }}>
+                    / {quota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
+                  </span>
+                </span>
+                {/* Mini Progress Bar */}
+                <div style={{ width: 64, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginLeft: 4 }}>
+                  <div
+                    style={{
+                      height: '100%',
+                      background: '#0284c7',
+                      width: `${quota.dailyQuota ? Math.min(100, Math.round((quota.remainingQuota / quota.dailyQuota) * 100)) : 0}%`,
+                      borderRadius: 3,
+                    }}
+                  />
+                </div>
+                <span style={{ fontSize: 11.5, color: '#0284c7', fontWeight: 600, marginLeft: 2 }}>
+                  (Còn {quota.dailyQuota ? Math.round((quota.remainingQuota / quota.dailyQuota) * 100) : 0}%)
+                </span>
+              </div>
+
+              {/* Hạn mức tin hậu mãi */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#334155' }}>
+                <span style={{ color: '#cbd5e1' }}>•</span>
+                <span style={{ color: '#64748b' }}>Hậu mãi (Promotion):</span>
+                <span style={{ fontWeight: 700, color: '#059669' }}>
+                  {quota.remainingMonthlyPromotionQuota !== undefined
+                    ? quota.remainingMonthlyPromotionQuota?.toLocaleString('vi-VN')
+                    : (quota.remainingQuotaPromotion?.toLocaleString('vi-VN') || '0')} tin
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div style={{ color: '#64748b' }}>
+              Chưa có dữ liệu hạn mức từ FPT Telecom. Bấm "Làm mới" để kiểm tra.
+            </div>
+          )}
+
+          {/* Nút Làm mới bên phải */}
           <button
             type="button"
             className="btn btn-sm btn-secondary"
             onClick={() => refetchQuota()}
             disabled={isQuotaLoading}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 500 }}
+            style={{
+              height: 26,
+              padding: '0 8px',
+              fontSize: 11.5,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              color: '#475569',
+            }}
+            title="Làm mới thông tin hạn mức từ FPT"
           >
-            <ArrowsClockwise size={13} className={isQuotaLoading ? 'spin' : ''} />
-            Làm mới hạn mức
+            <ArrowsClockwise size={12} className={isQuotaLoading ? 'spin' : ''} />
+            <span>Làm mới</span>
           </button>
         </div>
-
-        {isQuotaLoading ? (
-          <div style={{ padding: '20px', textAlign: 'center' }}><div className="spinner" /></div>
-        ) : isQuotaError ? (
-          <div
-            style={{
-              padding: '14px 18px',
-              background: '#fef2f2',
-              border: '1px solid #fecaca',
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: 12,
-              flexWrap: 'wrap',
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-              <WarningCircle size={20} color="#dc2626" weight="bold" style={{ marginTop: 2, flexShrink: 0 }} />
-              <div>
-                <div style={{ fontSize: 13.5, fontWeight: 600, color: '#991b1b' }}>
-                  Không thể lấy hạn mức từ máy chủ FPT ZBS
-                </div>
-                <div style={{ fontSize: 12.5, color: '#b91c1c', marginTop: 2 }}>
-                  {quotaError?.response?.data?.message || quotaError?.message || 'Lỗi kết nối máy chủ FPT ZBS'}
-                </div>
-              </div>
-            </div>
-            <button
-              type="button"
-              className="btn btn-secondary btn-sm"
-              onClick={() => refetchQuota()}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 12,
-                color: '#991b1b',
-                borderColor: '#fca5a5',
-              }}
-            >
-              <ArrowsClockwise size={13} />
-              Thử lại
-            </button>
-          </div>
-        ) : quota ? (
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-              gap: 14,
-            }}
-          >
-            {/* Daily Quota */}
-            <div
-              style={{
-                padding: '14px 16px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 8,
-              }}
-            >
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
-                Hạn mức gửi trong ngày hôm nay
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#0f172a', marginTop: 4 }}>
-                {quota.remainingQuota?.toLocaleString('vi-VN') || 0}{' '}
-                <span style={{ fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>
-                  / {quota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
-                </span>
-              </div>
-              {/* Progress bar */}
-              <div style={{ background: '#e2e8f0', borderRadius: 4, height: 6, marginTop: 10, overflow: 'hidden' }}>
-                <div
-                  style={{
-                    background: '#0284c7',
-                    height: '100%',
-                    width: `${quota.dailyQuota ? Math.min(100, Math.round((quota.remainingQuota / quota.dailyQuota) * 100)) : 0}%`,
-                    borderRadius: 4,
-                  }}
-                />
-              </div>
-              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 6 }}>
-                Còn lại {quota.dailyQuota ? Math.round((quota.remainingQuota / quota.dailyQuota) * 100) : 0}% hạn mức gửi hôm nay
-              </div>
-            </div>
-
-            {/* Monthly Promotion Quota */}
-            <div
-              style={{
-                padding: '14px 16px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: 8,
-              }}
-            >
-              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 500 }}>
-                Hạn mức gửi tin hậu mãi (Promotion)
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: '#059669', marginTop: 4 }}>
-                {quota.remainingMonthlyPromotionQuota !== undefined
-                  ? quota.remainingMonthlyPromotionQuota?.toLocaleString('vi-VN')
-                  : (quota.remainingQuotaPromotion?.toLocaleString('vi-VN') || '0')}{' '}
-                <span style={{ fontSize: 12.5, color: '#64748b', fontWeight: 500 }}>
-                  {quota.monthlyPromotionQuota ? `/ ${quota.monthlyPromotionQuota.toLocaleString('vi-VN')} tin` : 'tin còn lại'}
-                </span>
-              </div>
-              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 10 }}>
-                Áp dụng cho các mẫu tin ZNS chăm sóc khách hàng hậu mãi
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div style={{ fontSize: 13, color: '#64748b', textAlign: 'center', padding: '14px' }}>
-            Chưa có thông tin hạn mức từ FPT Telecom. Bấm "Làm mới hạn mức" để đồng bộ.
-          </div>
-        )}
       </div>
 
       {/* Section 1: Danh sách khách hàng đang sử dụng OA */}
@@ -435,7 +455,7 @@ export default function AdminOADetail() {
           }}
         >
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-            Khách hàng được cấp quyền ({oa.assignments?.length || 0})
+            Khách hàng được cấp quyền
           </h2>
           <button
             type="button"
@@ -531,7 +551,7 @@ export default function AdminOADetail() {
           }}
         >
           <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-            Mẫu tin ZNS đã duyệt ({oa.templates?.length || 0})
+            Mẫu tin ZNS đã duyệt
           </h2>
           <button
             type="button"
@@ -686,14 +706,14 @@ export default function AdminOADetail() {
 
                 <div className="form-group">
                   <label className="form-label" style={{ fontWeight: 500 }}>Trạng thái hoạt động</label>
-                  <select
-                    className="form-select"
+                  <CustomSelect
                     value={editForm.status}
-                    onChange={e => setEditForm({ ...editForm, status: e.target.value })}
-                  >
-                    <option value="ACTIVE">Đang hoạt động</option>
-                    <option value="INACTIVE">Tạm dừng</option>
-                  </select>
+                    onChange={(val) => setEditForm({ ...editForm, status: val })}
+                    options={[
+                      { value: 'ACTIVE', label: 'Đang hoạt động' },
+                      { value: 'INACTIVE', label: 'Tạm dừng' },
+                    ]}
+                  />
                 </div>
 
                 <div className="form-group">
@@ -759,18 +779,16 @@ export default function AdminOADetail() {
 
               <div className="form-group">
                 <label className="form-label" style={{ fontWeight: 500 }}>Chọn khách hàng *</label>
-                <select
-                  className="form-select"
+                <CustomSelect
                   value={selectedCustomerId}
-                  onChange={e => setSelectedCustomerId(e.target.value)}
-                >
-                  <option value="">-- Chọn tài khoản khách hàng --</option>
-                  {availableCustomers.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.companyName ? `${c.companyName} (${c.fullName})` : `${c.fullName} (${c.email})`}
-                    </option>
-                  ))}
-                </select>
+                  onChange={setSelectedCustomerId}
+                  placeholder="Chọn tài khoản khách hàng"
+                  options={availableCustomers.map(c => ({
+                    value: c.id,
+                    label: c.companyName ? `${c.companyName}` : c.fullName,
+                    sublabel: c.companyName ? c.fullName : c.email,
+                  }))}
+                />
               </div>
 
               {!availableCustomers.length && (

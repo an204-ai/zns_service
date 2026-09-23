@@ -8,6 +8,7 @@ import {
   FileXls, CheckCircle, WarningCircle, Info
 } from '@phosphor-icons/react';
 import Pagination from '../../components/Pagination';
+import CustomSelect from '../../components/CustomSelect';
 
 export default function CustomerCampaigns() {
   const queryClient = useQueryClient();
@@ -257,40 +258,34 @@ export default function CustomerCampaigns() {
 
                 <div className="form-group">
                   <label className="form-label">Chọn ứng dụng gửi tin *</label>
-                  <select
-                    className="form-select"
+                  <CustomSelect
                     value={oaId}
-                    onChange={e => {
-                      setOaId(e.target.value);
+                    onChange={(val) => {
+                      setOaId(val);
                       setTemplateId('');
                     }}
-                    required
-                  >
-                    <option value="">-- Chọn ứng dụng gửi tin --</option>
-                    {oaConfigs?.map(o => (
-                      <option key={o.id} value={o.id}>
-                        {o.isSystem ? `[Ứng dụng hệ thống] ${o.oaName}` : `[Ứng dụng riêng] ${o.oaName}`}
-                      </option>
-                    ))}
-                  </select>
+                    placeholder="Chọn ứng dụng gửi tin"
+                    options={(oaConfigs || []).map(o => ({
+                      value: o.id,
+                      label: o.oaName,
+                      sublabel: o.isSystem ? 'Hệ thống' : 'Cá nhân',
+                    }))}
+                  />
                 </div>
 
                 {oaId && (
                   <div className="form-group">
                     <label className="form-label">Chọn mẫu tin nhắn (Template) *</label>
-                    <select
-                      className="form-select"
+                    <CustomSelect
                       value={templateId}
-                      onChange={e => setTemplateId(e.target.value)}
-                      required
-                    >
-                      <option value="">-- Chọn template --</option>
-                      {selectedOA?.templates?.map(t => (
-                        <option key={t.templateId} value={t.templateId}>
-                          {t.templateName} (ID: {t.templateId})
-                        </option>
-                      ))}
-                    </select>
+                      onChange={setTemplateId}
+                      placeholder="Chọn template"
+                      options={(selectedOA?.templates || []).map(t => ({
+                        value: t.templateId,
+                        label: t.templateName,
+                        sublabel: `ID: ${t.templateId}`,
+                      }))}
+                    />
                   </div>
                 )}
 
