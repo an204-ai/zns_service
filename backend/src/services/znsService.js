@@ -5,13 +5,11 @@ const { v4: uuidv4 } = require('uuid');
 /**
  * Queue a single ZNS message for sending
  */
-async function queueMessage({ userId, fptAppConfigId, fptOaConfigId, templateId, phone, templateData, refId, callbackUrl, campaignId }) {
-  const configId = fptAppConfigId || fptOaConfigId;
-
+async function queueMessage({ userId, fptAppConfigId, templateId, phone, templateData, refId, callbackUrl, campaignId }) {
   // Validate template exists and is active
   const template = await prisma.znsTemplate.findFirst({
     where: {
-      fptAppConfigId: configId,
+      fptAppConfigId,
       templateId,
       status: 'ENABLE',
     },
@@ -21,11 +19,10 @@ async function queueMessage({ userId, fptAppConfigId, fptOaConfigId, templateId,
     throw Object.assign(new Error('Template không tồn tại hoặc đã bị khoá'), { statusCode: 400 });
   }
 
-  // Validate App / OA config (owned by user OR active system App assigned/shared)
-  const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
-  const appConfig = await appModel.findFirst({
+  // Validate App config (owned by user OR active system App assigned/shared)
+  const appConfig = await prisma.fptAppConfig.findFirst({
     where: {
-      id: configId,
+      id: fptAppConfigId,
       status: 'ACTIVE',
       OR: [
         { userId },
@@ -42,7 +39,7 @@ async function queueMessage({ userId, fptAppConfigId, fptOaConfigId, templateId,
   const message = await prisma.message.create({
     data: {
       userId,
-      fptAppConfigId: configId,
+      fptAppConfigId,
       templateId,
       phone,
       templateData,
@@ -61,8 +58,7 @@ async function queueMessage({ userId, fptAppConfigId, fptOaConfigId, templateId,
       'zns_send',
       Buffer.from(JSON.stringify({
         messageId: message.id,
-        oaConfigId: configId,
-        appConfigId: configId,
+        fptAppConfigId,
         phone,
         templateId,
         templateData,
@@ -79,15 +75,14 @@ async function queueMessage({ userId, fptAppConfigId, fptOaConfigId, templateId,
 /**
  * Queue multiple messages (batch) for a campaign
  */
-async function queueBatchMessages({ userId, fptAppConfigId, fptOaConfigId, templateId, records, campaignId }) {
-  const configId = fptAppConfigId || fptOaConfigId;
+async function queueBatchMessages({ userId, fptAppConfigId, templateId, records, campaignId }) {
   const messages = [];
 
   for (const record of records) {
     try {
       const msg = await queueMessage({
         userId,
-        fptAppConfigId: configId,
+        fptAppConfigId,
         templateId,
         phone: record.phone,
         templateData: record.templateData,
@@ -179,14 +174,13 @@ async function handleDLR({ msgId, type, status, sentTime, receivedTime, error, e
 /**
  * Get messages with filtering and pagination
  */
-async function getMessages({ userId, status, phone, templateId, fptAppConfigId, fptOaConfigId, campaignId, fromDate, toDate, page = 1, limit = 20 }) {
-  const configId = fptAppConfigId || fptOaConfigId;
+async function getMessages({ userId, status, phone, templateId, fptAppConfigId, campaignId, fromDate, toDate, page = 1, limit = 20 }) {
   const where = {};
   if (userId) where.userId = userId;
   if (status) where.status = status;
   if (phone) where.phone = { contains: phone };
   if (templateId) where.templateId = templateId;
-  if (configId) where.fptAppConfigId = configId;
+  if (fptAppConfigId) where.fptAppConfigId = fptAppConfigId;
   if (campaignId) where.campaignId = campaignId;
   if (fromDate || toDate) {
     where.createdAt = {};
@@ -208,12 +202,7 @@ async function getMessages({ userId, status, phone, templateId, fptAppConfigId, 
     prisma.message.count({ where }),
   ]);
 
-  const formattedData = data.map((m) => ({
-    ...m,
-    fptOaConfig: m.fptAppConfig,
-  }));
-
-  return { data: formattedData, total, page, totalPages: Math.ceil(total / limit) };
+  return { data, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
@@ -228,10 +217,6 @@ async function getMessageById(id) {
       campaign: { select: { id: true, name: true } },
     },
   });
-
-  if (message) {
-    message.fptOaConfig = message.fptAppConfig;
-  }
 
   return message;
 }

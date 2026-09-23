@@ -3,13 +3,12 @@ const { prisma } = require('../config/database');
 /**
  * Create a new campaign
  */
-async function createCampaign({ userId, name, fptAppConfigId, fptOaConfigId, templateId, totalMessages, source = 'PORTAL' }) {
-  const configId = fptAppConfigId || fptOaConfigId;
+async function createCampaign({ userId, name, fptAppConfigId, templateId, totalMessages, source = 'PORTAL' }) {
   return prisma.campaign.create({
     data: {
       userId,
       name,
-      fptAppConfigId: configId,
+      fptAppConfigId,
       templateId,
       totalMessages,
       source,
@@ -40,12 +39,7 @@ async function getCampaigns({ userId, status, page = 1, limit = 20 }) {
     prisma.campaign.count({ where }),
   ]);
 
-  const formattedData = data.map((c) => ({
-    ...c,
-    fptOaConfig: c.fptAppConfig,
-  }));
-
-  return { data: formattedData, total, page, totalPages: Math.ceil(total / limit) };
+  return { data, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
@@ -59,10 +53,6 @@ async function getCampaignById(id) {
       fptAppConfig: { select: { id: true, oaName: true } },
     },
   });
-
-  if (campaign) {
-    campaign.fptOaConfig = campaign.fptAppConfig;
-  }
 
   return campaign;
 }

@@ -100,7 +100,7 @@ export default function AdminMessages() {
                         {m.user?.companyName || m.user?.fullName}
                       </td>
                       <td style={{ fontSize: 12.5, color: '#475569' }}>
-                        {m.fptAppConfig?.oaName || m.fptOaConfig?.oaName || '—'}
+                        {m.fptAppConfig?.oaName || '—'}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
                         {m.phone}

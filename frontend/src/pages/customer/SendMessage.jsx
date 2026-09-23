@@ -42,7 +42,6 @@ export default function CustomerSendMessage() {
     setResult(null);
     sendMutation.mutate({
       fptAppConfigId: oaId,
-      fptOaConfigId: oaId,
       templateId: Number(templateId),
       phone: phone.trim(),
       templateData: params,

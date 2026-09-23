@@ -29,20 +29,20 @@ async function startWorker() {
       return;
     }
 
-    const { messageId, oaConfigId, phone, templateId, templateData, refId, callbackUrl } = payload;
+    const { messageId, fptAppConfigId, phone, templateId, templateData, refId, callbackUrl } = payload;
 
     try {
       // Get FPT credentials
-      const oaConfig = await prisma.fptOaConfig.findUnique({ where: { id: oaConfigId } });
-      if (!oaConfig || oaConfig.status !== 'ACTIVE') {
-        throw new Error('OA config inactive or not found');
+      const appConfig = await prisma.fptAppConfig.findUnique({ where: { id: fptAppConfigId } });
+      if (!appConfig || appConfig.status !== 'ACTIVE') {
+        throw new Error('Ứng dụng liên kết không hoạt động hoặc không tồn tại');
       }
 
-      const secretKey = decrypt(oaConfig.fptSecretKeyEncrypted);
+      const secretKey = decrypt(appConfig.fptSecretKeyEncrypted);
 
       // Call FPT API
       const result = await fptAdapter.sendMessage({
-        appId: oaConfig.fptAppId,
+        appId: appConfig.fptAppId,
         secretKey,
         phone,
         templateId,

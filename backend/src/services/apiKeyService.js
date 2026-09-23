@@ -2,10 +2,10 @@ const { prisma } = require('../config/database');
 const { generateApiKey, hashApiKey, getApiKeyPrefix, encrypt, decrypt } = require('../utils/crypto');
 
 /**
- * Create a new API key for a user (optionally associated with an OA config)
+ * Create a new API key for a user (optionally associated with an App config)
  * Saves encrypted key so user can view/copy anytime
  */
-async function createApiKey(userId, keyName, oaConfigId = null) {
+async function createApiKey(userId, keyName, appConfigId = null) {
   const plainKey = generateApiKey();
   const apiKeyHash = hashApiKey(plainKey);
   const prefix = getApiKeyPrefix(plainKey);
@@ -14,7 +14,7 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
   const apiKey = await prisma.apiKey.create({
     data: {
       userId,
-      appConfigId: oaConfigId || null,
+      appConfigId: appConfigId || null,
       keyName,
       apiKeyHash,
       apiKeyEncrypted,
@@ -33,21 +33,19 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
     keyName: apiKey.keyName,
     prefix: apiKey.prefix,
     appConfigId: apiKey.appConfigId,
-    oaConfigId: apiKey.appConfigId,
     appConfig: apiKey.appConfig,
-    oaConfig: apiKey.appConfig,
     apiKey: plainKey,
     createdAt: apiKey.createdAt,
   };
 }
 
 /**
- * Ensure an API key exists for a user and OA config
+ * Ensure an API key exists for a user and App config
  * If exists, returns it with decrypted key; if not, creates a new one
  */
-async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
+async function getOrCreateApiKeyForApp(userId, appConfigId, keyName = null) {
   let key = await prisma.apiKey.findFirst({
-    where: { userId, appConfigId: oaConfigId },
+    where: { userId, appConfigId },
     include: {
       appConfig: {
         select: { id: true, oaName: true, isSystem: true },
@@ -56,10 +54,9 @@ async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
   });
 
   if (!key) {
-    const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
-    const oa = await appModel.findUnique({ where: { id: oaConfigId } });
-    const generatedName = keyName || (oa ? `Khóa API - ${oa.oaName}` : 'Khóa API ZNS');
-    key = await createApiKey(userId, generatedName, oaConfigId);
+    const app = await prisma.fptAppConfig.findUnique({ where: { id: appConfigId } });
+    const generatedName = keyName || (app ? `Khóa API - ${app.oaName}` : 'Khóa API ZNS');
+    key = await createApiKey(userId, generatedName, appConfigId);
     return key;
   }
 
@@ -91,9 +88,7 @@ async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
     prefix: key.prefix,
     apiKey: plainKey,
     appConfigId: key.appConfigId,
-    oaConfigId: key.appConfigId,
     appConfig: key.appConfig,
-    oaConfig: key.appConfig,
     isActive: key.isActive,
     lastUsedAt: key.lastUsedAt,
     createdAt: key.createdAt,
@@ -101,15 +96,15 @@ async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
 }
 
 /**
- * Regenerate API key for an OA config
+ * Regenerate API key for an App config
  */
-async function regenerateApiKeyForOA(userId, oaConfigId) {
+async function regenerateApiKeyForApp(userId, appConfigId) {
   const plainKey = generateApiKey();
   const apiKeyHash = hashApiKey(plainKey);
   const prefix = getApiKeyPrefix(plainKey);
   const apiKeyEncrypted = encrypt(plainKey);
 
-  const existing = await prisma.apiKey.findFirst({ where: { userId, appConfigId: oaConfigId } });
+  const existing = await prisma.apiKey.findFirst({ where: { userId, appConfigId } });
 
   if (existing) {
     const updated = await prisma.apiKey.update({
@@ -127,17 +122,15 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
       keyName: updated.keyName,
       prefix: updated.prefix,
       apiKey: plainKey,
-      appConfigId: oaConfigId,
-      oaConfigId,
+      appConfigId,
     };
   } else {
-    const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
-    const oa = await appModel.findUnique({ where: { id: oaConfigId } });
+    const app = await prisma.fptAppConfig.findUnique({ where: { id: appConfigId } });
     const key = await prisma.apiKey.create({
       data: {
         userId,
-        appConfigId: oaConfigId,
-        keyName: oa ? `Khóa API - ${oa.oaName}` : 'Khóa API ZNS',
+        appConfigId,
+        keyName: app ? `Khóa API - ${app.oaName}` : 'Khóa API ZNS',
         apiKeyHash,
         apiKeyEncrypted,
         prefix,
@@ -149,8 +142,7 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
       keyName: key.keyName,
       prefix: key.prefix,
       apiKey: plainKey,
-      appConfigId: oaConfigId,
-      oaConfigId,
+      appConfigId,
     };
   }
 }
@@ -190,12 +182,10 @@ async function getApiKeys(userId) {
       prefix: k.prefix,
       apiKey: plainKey || `${k.prefix}...`,
       appConfigId: k.appConfigId,
-      oaConfigId: k.appConfigId,
       isActive: k.isActive,
       lastUsedAt: k.lastUsedAt,
       createdAt: k.createdAt,
       appConfig: k.appConfig,
-      oaConfig: k.appConfig,
     };
   });
 }
@@ -226,8 +216,10 @@ async function deleteApiKey(id, userId) {
 
 module.exports = {
   createApiKey,
-  getOrCreateApiKeyForOA,
-  regenerateApiKeyForOA,
+  getOrCreateApiKeyForApp,
+  getOrCreateApiKeyForOA: getOrCreateApiKeyForApp,
+  regenerateApiKeyForApp,
+  regenerateApiKeyForOA: regenerateApiKeyForApp,
   getApiKeys,
   toggleApiKey,
   deleteApiKey,

@@ -158,7 +158,7 @@ export default function TemplateDetailModal({
                 </span>
               </div>
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                Ứng dụng: <strong>{tpl.fptAppConfig?.oaName || tpl.fptOaConfig?.oaName || 'Ứng dụng liên kết'}</strong> • Phân loại: {tpl.templateTag || 'Chăm sóc khách hàng'}
+                Ứng dụng: <strong>{tpl.fptAppConfig?.oaName || 'Ứng dụng liên kết'}</strong> • Phân loại: {tpl.templateTag || 'Chăm sóc khách hàng'}
               </div>
             </div>
           </div>

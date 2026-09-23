@@ -47,8 +47,7 @@ async function authenticateApiKey(req, res, next) {
 
     req.user = keyRecord.user;
     req.apiKeyId = keyRecord.id;
-    req.appConfigId = keyRecord.appConfigId || keyRecord.oaConfigId;
-    req.oaConfigId = keyRecord.appConfigId || keyRecord.oaConfigId;
+    req.appConfigId = keyRecord.appConfigId;
     next();
   } catch (error) {
     console.error('API Key auth error:', error);

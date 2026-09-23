@@ -36,7 +36,7 @@ async function createCustomer({ email, password, fullName, companyName, phone, o
   // 1. Gán OA Hệ thống nếu chọn dùng OA Hệ thống
   if (oaType === 'SYSTEM' && systemOaId) {
     try {
-      await oaConfigService.assignSystemOA({ userId: customer.id, oaConfigId: systemOaId });
+      await oaConfigService.assignSystemOA({ userId: customer.id, appConfigId: systemOaId });
       oaConfig = { type: 'SYSTEM', id: systemOaId };
     } catch (err) {
       console.error('Lỗi gán OA hệ thống cho khách hàng mới:', err.message);
@@ -334,7 +334,7 @@ async function deleteCustomer(id) {
 
   return prisma.$transaction(async (tx) => {
     // 1. Delete system application assignments for this customer
-    await (tx.customerAppAssignment || tx.customerOaAssignment).deleteMany({
+    await tx.customerAppAssignment.deleteMany({
       where: { userId: id },
     });
 
@@ -354,14 +354,14 @@ async function deleteCustomer(id) {
     });
 
     // 5. Delete private apps owned by this customer
-    const userApps = await (tx.fptAppConfig || tx.fptOaConfig).findMany({
+    const userApps = await tx.fptAppConfig.findMany({
       where: { userId: id },
       select: { id: true },
     });
     const appIds = userApps.map((o) => o.id);
 
     if (appIds.length > 0) {
-      await (tx.customerAppAssignment || tx.customerOaAssignment).deleteMany({
+      await tx.customerAppAssignment.deleteMany({
         where: { appConfigId: { in: appIds } },
       });
       await tx.message.deleteMany({
@@ -373,7 +373,7 @@ async function deleteCustomer(id) {
       await tx.znsTemplate.deleteMany({
         where: { fptAppConfigId: { in: appIds } },
       });
-      await (tx.fptAppConfig || tx.fptOaConfig).deleteMany({
+      await tx.fptAppConfig.deleteMany({
         where: { id: { in: appIds } },
       });
     }
@@ -387,7 +387,7 @@ async function deleteCustomer(id) {
 }
 
 /**
- * Create a private OA / App for a customer
+ * Create a private App for a customer
  */
 async function createCustomerPrivateOA(userId, { oaName, fptAppId, fptSecretKey }) {
   const oa = await oaConfigService.createOAConfig({
@@ -403,31 +403,28 @@ async function createCustomerPrivateOA(userId, { oaName, fptAppId, fptSecretKey 
 /**
  * Delete a private app of a customer
  */
-async function deleteCustomerPrivateOA(userId, oaConfigId) {
-  const model = prisma.fptAppConfig || prisma.fptOaConfig;
-  const oa = await model.findFirst({
-    where: { id: oaConfigId, userId, isSystem: false },
+async function deleteCustomerPrivateOA(userId, appConfigId) {
+  const oa = await prisma.fptAppConfig.findFirst({
+    where: { id: appConfigId, userId, isSystem: false },
   });
   if (!oa) throw Object.assign(new Error('Ứng dụng liên kết riêng không tồn tại hoặc không thuộc khách hàng này'), { statusCode: 404 });
 
   return prisma.$transaction(async (tx) => {
-    const appAssignModel = tx.customerAppAssignment || tx.customerOaAssignment;
-    const appModel = tx.fptAppConfig || tx.fptOaConfig;
-    await tx.apiKey.deleteMany({ where: { appConfigId: oaConfigId } });
-    await tx.message.deleteMany({ where: { fptAppConfigId: oaConfigId } });
-    await tx.campaign.deleteMany({ where: { fptAppConfigId: oaConfigId } });
-    await tx.znsTemplate.deleteMany({ where: { fptAppConfigId: oaConfigId } });
-    await appAssignModel.deleteMany({ where: { appConfigId: oaConfigId } });
-    return appModel.delete({ where: { id: oaConfigId } });
+    await tx.apiKey.deleteMany({ where: { appConfigId } });
+    await tx.message.deleteMany({ where: { fptAppConfigId: appConfigId } });
+    await tx.campaign.deleteMany({ where: { fptAppConfigId: appConfigId } });
+    await tx.znsTemplate.deleteMany({ where: { fptAppConfigId: appConfigId } });
+    await tx.customerAppAssignment.deleteMany({ where: { appConfigId } });
+    return tx.fptAppConfig.delete({ where: { id: appConfigId } });
   });
 }
 
 /**
- * Regenerate API key for an OA
+ * Regenerate API key for an App
  */
-async function regenerateOAKey(userId, oaConfigId) {
+async function regenerateOAKey(userId, appConfigId) {
   const apiKeyService = require('./apiKeyService');
-  return apiKeyService.regenerateApiKeyForOA(userId, oaConfigId);
+  return apiKeyService.regenerateApiKeyForApp(userId, appConfigId);
 }
 
 module.exports = {

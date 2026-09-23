@@ -73,7 +73,7 @@ export default function AdminTemplates() {
                         {t.templateId}
                       </td>
                       <td className="table-cell-bold">{t.templateName}</td>
-                      <td style={{ fontSize: 12.5, color: '#475569' }}>{t.fptAppConfig?.oaName || t.fptOaConfig?.oaName}</td>
+                      <td style={{ fontSize: 12.5, color: '#475569' }}>{t.fptAppConfig?.oaName}</td>
                       <td style={{ textAlign: 'center' }}>
                         <span className="badge badge-neutral" style={{ fontSize: 11 }}>
                           {t.templateTag || 'Chăm sóc khách hàng'}
@@ -146,7 +146,7 @@ export default function AdminTemplates() {
           isOpen={!!selectedTemplate}
           onClose={() => setSelectedTemplate(null)}
           templateId={selectedTemplate.templateId}
-          oaId={selectedTemplate.fptAppConfigId || selectedTemplate.fptOaConfigId || selectedTemplate.fptAppConfig?.id || selectedTemplate.fptOaConfig?.id}
+          oaId={selectedTemplate.fptAppConfigId || selectedTemplate.fptAppConfig?.id}
           isAdmin={true}
         />
       )}

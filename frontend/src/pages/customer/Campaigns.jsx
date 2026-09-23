@@ -110,7 +110,6 @@ export default function CustomerCampaigns() {
     const formData = new FormData();
     formData.append('name', campaignName.trim());
     formData.append('fptAppConfigId', oaId);
-    formData.append('fptOaConfigId', oaId);
     formData.append('templateId', templateId);
     formData.append('file', file);
 
@@ -168,7 +167,7 @@ export default function CustomerCampaigns() {
                     return (
                       <tr key={c.id}>
                         <td className="table-cell-bold">{c.name}</td>
-                        <td style={{ fontSize: 'var(--font-size-sm)' }}>{c.fptAppConfig?.oaName || c.fptOaConfig?.oaName || '—'}</td>
+                        <td style={{ fontSize: 'var(--font-size-sm)' }}>{c.fptAppConfig?.oaName || '—'}</td>
                         <td>{c.totalMessages}</td>
                         <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>{c.successCount}</td>
                         <td style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{c.failedCount}</td>

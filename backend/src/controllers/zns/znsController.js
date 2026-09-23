@@ -14,8 +14,8 @@ async function send(req, res, next) {
       });
     }
 
-    // Find the active App / OA config (using API key's assigned App if present, or user's Apps)
-    const activeConfigId = req.appConfigId || req.oaConfigId;
+    // Find the active App config (using API key's assigned App if present, or user's Apps)
+    const activeConfigId = req.appConfigId;
     const oaWhere = activeConfigId
       ? { id: activeConfigId, status: 'ACTIVE' }
       : {

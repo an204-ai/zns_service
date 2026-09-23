@@ -100,7 +100,7 @@ export default function CustomerMessageHistory() {
                         {m.templateId}
                       </td>
                       <td style={{ fontSize: 12.5, color: '#475569' }}>
-                        {m.fptAppConfig?.oaName || m.fptOaConfig?.oaName || '—'}
+                        {m.fptAppConfig?.oaName || '—'}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         {m.status === 'SUCCESS' ? (

@@ -117,7 +117,7 @@ async function createSystemOAConfig(req, res, next) {
 /** POST /api/v1/admin/customers/:id/assign-system-oa */
 async function assignSystemOA(req, res, next) {
   try {
-    const targetId = req.body.appConfigId || req.body.oaConfigId;
+    const targetId = req.body.appConfigId;
     if (!targetId) {
       return res.status(400).json({ success: false, message: 'Vui lòng chọn Ứng dụng hệ thống cần gán' });
     }
@@ -186,10 +186,9 @@ async function updateOAStatus(req, res, next) {
 /** GET /api/v1/admin/templates */
 async function listTemplates(req, res, next) {
   try {
-    const { oaConfigId, appConfigId, status, page = 1, limit = 50 } = req.query;
-    const configId = appConfigId || oaConfigId;
+    const { appConfigId, status, page = 1, limit = 50 } = req.query;
     const where = {};
-    if (configId) where.fptAppConfigId = configId;
+    if (appConfigId) where.fptAppConfigId = appConfigId;
     if (status) where.status = status;
 
     const [data, total] = await Promise.all([
@@ -203,22 +202,17 @@ async function listTemplates(req, res, next) {
       prisma.znsTemplate.count({ where }),
     ]);
 
-    const formattedData = data.map(t => ({
-      ...t,
-      fptOaConfig: t.fptAppConfig,
-    }));
-
-    res.json({ success: true, data: formattedData, total, page: +page, totalPages: Math.ceil(total / +limit) });
+    res.json({ success: true, data, total, page: +page, totalPages: Math.ceil(total / +limit) });
   } catch (error) { next(error); }
 }
 
 /** GET /api/v1/admin/messages */
 async function listMessages(req, res, next) {
   try {
-    const { userId, status, phone, templateId, fptOaConfigId, fromDate, toDate, page = 1, limit = 20 } = req.query;
+    const { userId, status, phone, templateId, fptAppConfigId, fromDate, toDate, page = 1, limit = 20 } = req.query;
     const result = await znsService.getMessages({
       userId, status, phone, templateId: templateId ? +templateId : undefined,
-      fptOaConfigId, fromDate, toDate, page: +page, limit: +limit
+      fptAppConfigId, fromDate, toDate, page: +page, limit: +limit
     });
     res.json({ success: true, ...result });
   } catch (error) { next(error); }
@@ -239,7 +233,7 @@ async function dashboard(req, res, next) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [totalCustomers, activeCustomers, todayStats, dailyStats, recentMessagesRaw] = await Promise.all([
+    const [totalCustomers, activeCustomers, todayStats, dailyStats, recentMessages] = await Promise.all([
       prisma.user.count({ where: { role: 'CUSTOMER' } }),
       prisma.user.count({ where: { role: 'CUSTOMER', status: 'ACTIVE' } }),
       znsService.getMessageStats({ fromDate: today.toISOString() }),
@@ -253,11 +247,6 @@ async function dashboard(req, res, next) {
         },
       }),
     ]);
-
-    const recentMessages = (recentMessagesRaw || []).map(m => ({
-      ...m,
-      fptOaConfig: m.fptAppConfig,
-    }));
 
     res.json({
       success: true,

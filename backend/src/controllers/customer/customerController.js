@@ -17,8 +17,7 @@ async function dashboard(req, res, next) {
     // Start of this month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
-    const [todayStats, monthStats, dailyStatsRaw, recentMessagesRaw, oaConfigs] = await Promise.all([
+    const [todayStats, monthStats, dailyStatsRaw, recentMessages, oaConfigs] = await Promise.all([
       znsService.getMessageStats({ userId, fromDate: startOfToday.toISOString() }),
       znsService.getMessageStats({ userId, fromDate: startOfMonth.toISOString() }),
       znsService.getDailyStats({ userId, days: 8 }),
@@ -32,7 +31,7 @@ async function dashboard(req, res, next) {
           fptAppConfig: { select: { oaName: true } },
         },
       }),
-      appModel.findMany({
+      prisma.fptAppConfig.findMany({
         where: {
           status: 'ACTIVE',
           OR: [
@@ -43,11 +42,6 @@ async function dashboard(req, res, next) {
         select: { id: true, oaName: true, isSystem: true },
       }),
     ]);
-
-    const recentMessages = (recentMessagesRaw || []).map((m) => ({
-      ...m,
-      fptOaConfig: m.fptAppConfig,
-    }));
 
     // Format chart data (DD/MM)
     const chartData = (dailyStatsRaw || []).map(day => {
@@ -156,7 +150,7 @@ async function deleteApiKey(req, res, next) {
 /** GET /api/v1/customer/oa-configs */
 async function listOAConfigs(req, res, next) {
   try {
-    const configs = await prisma.fptOaConfig.findMany({
+    const configs = await prisma.fptAppConfig.findMany({
       where: {
         status: 'ACTIVE',
         OR: [
@@ -180,9 +174,9 @@ async function listOAConfigs(req, res, next) {
       ],
     });
 
-    // Don't expose encrypted secret key; attach dedicated API key for each OA
+    // Don't expose encrypted secret key; attach dedicated API key for each App
     const sanitized = await Promise.all(configs.map(async (c) => {
-      const apiKey = await apiKeyService.getOrCreateApiKeyForOA(req.user.id, c.id, `Khóa API - ${c.oaName}`);
+      const apiKey = await apiKeyService.getOrCreateApiKeyForApp(req.user.id, c.id, `Khóa API - ${c.oaName}`);
       return {
         id: c.id,
         oaName: c.oaName,
@@ -208,10 +202,10 @@ async function regenerateOAKey(req, res, next) {
   });
 }
 
-async function verifyCustomerOAAccess(userId, oaConfigId) {
-  return prisma.fptOaConfig.findFirst({
+async function verifyCustomerOAAccess(userId, appConfigId) {
+  return prisma.fptAppConfig.findFirst({
     where: {
-      id: oaConfigId,
+      id: appConfigId,
       status: 'ACTIVE',
       OR: [
         { userId },
@@ -264,16 +258,15 @@ async function getTemplateDetail(req, res, next) {
 /** POST /api/v1/customer/send-message */
 async function sendMessage(req, res, next) {
   try {
-    const { fptAppConfigId, fptOaConfigId, templateId, phone, templateData, refId, callbackUrl } = req.body;
-    const configId = fptAppConfigId || fptOaConfigId;
+    const { fptAppConfigId, templateId, phone, templateData, refId, callbackUrl } = req.body;
 
-    if (!configId || !templateId || !phone || !templateData) {
+    if (!fptAppConfigId || !templateId || !phone || !templateData) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin' });
     }
 
     const message = await znsService.queueMessage({
       userId: req.user.id,
-      fptAppConfigId: configId,
+      fptAppConfigId,
       templateId,
       phone,
       templateData,
@@ -291,11 +284,10 @@ async function sendMessage(req, res, next) {
 /** POST /api/v1/customer/campaigns */
 async function createCampaign(req, res, next) {
   try {
-    const { name, fptAppConfigId, fptOaConfigId, templateId } = req.body;
-    const configId = fptAppConfigId || fptOaConfigId;
+    const { name, fptAppConfigId, templateId } = req.body;
     const file = req.file;
 
-    if (!name || !configId || !templateId || !file) {
+    if (!name || !fptAppConfigId || !templateId || !file) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đủ thông tin và tải lên file Excel' });
     }
 
@@ -327,7 +319,7 @@ async function createCampaign(req, res, next) {
     const campaign = await campaignService.createCampaign({
       userId: req.user.id,
       name,
-      fptAppConfigId: configId,
+      fptAppConfigId,
       templateId: +templateId,
       totalMessages: records.length,
       source: 'EXCEL',
@@ -339,7 +331,7 @@ async function createCampaign(req, res, next) {
     // Queue batch messages
     await znsService.queueBatchMessages({
       userId: req.user.id,
-      fptAppConfigId: configId,
+      fptAppConfigId,
       templateId: +templateId,
       records,
       campaignId: campaign.id,
@@ -379,10 +371,10 @@ async function getCampaign(req, res, next) {
 /** GET /api/v1/customer/messages */
 async function listMessages(req, res, next) {
   try {
-    const { status, phone, templateId, fptOaConfigId, fromDate, toDate, page = 1, limit = 20 } = req.query;
+    const { status, phone, templateId, fptAppConfigId, fromDate, toDate, page = 1, limit = 20 } = req.query;
     const result = await znsService.getMessages({
       userId: req.user.id, status, phone, templateId: templateId ? +templateId : undefined,
-      fptOaConfigId, fromDate, toDate, page: +page, limit: +limit
+      fptAppConfigId, fromDate, toDate, page: +page, limit: +limit
     });
     res.json({ success: true, ...result });
   } catch (error) { next(error); }
