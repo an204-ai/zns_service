@@ -19,7 +19,7 @@ export default function AdminCustomers() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
 
-  // Modal 1: Create Customer (All-in-one with OA)
+  // Modal 1: Create Customer (Account only)
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [form, setForm] = useState({
     fullName: '',
@@ -27,11 +27,6 @@ export default function AdminCustomers() {
     password: '',
     companyName: '',
     phone: '',
-    oaType: 'SYSTEM', // 'SYSTEM' | 'PRIVATE' | 'NONE'
-    systemOaId: '',
-    oaName: '',
-    fptAppId: '',
-    fptSecretKey: '',
   });
 
   // Modal 2: Direct Attach OA for existing customer
@@ -81,19 +76,18 @@ export default function AdminCustomers() {
     onSuccess: (res) => {
       queryClient.invalidateQueries(['admin-customers']);
       setShowCreateModal(false);
+      const newId = res.data?.data?.id;
       setForm({
         fullName: '',
         email: '',
         password: '',
         companyName: '',
         phone: '',
-        oaType: 'SYSTEM',
-        systemOaId: '',
-        oaName: '',
-        fptAppId: '',
-        fptSecretKey: '',
       });
-      toast.success(res.data?.message || 'Tạo khách hàng thành công!');
+      toast.success('Tạo tài khoản khách hàng thành công! Đang chuyển đến trang chi tiết để gán ứng dụng.');
+      if (newId) {
+        navigate(`/admin/customers/${newId}`);
+      }
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi tạo khách hàng');
@@ -114,7 +108,8 @@ export default function AdminCustomers() {
   });
 
   const assignSystemOaMutation = useMutation({
-    mutationFn: ({ userId, oaConfigId }) => api.post(`/admin/customers/${userId}/assign-system-oa`, { oaConfigId }),
+    mutationFn: ({ userId, appConfigId, oaConfigId }) =>
+      api.post(`/admin/customers/${userId}/assign-system-oa`, { appConfigId: appConfigId || oaConfigId }),
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-customers']);
       toast.success('Gán ứng dụng hệ thống cho khách hàng thành công!');
@@ -173,32 +168,13 @@ export default function AdminCustomers() {
 
   const handleCreateCustomer = (e) => {
     e.preventDefault();
-    const payload = {
+    createMutation.mutate({
       fullName: form.fullName.trim(),
       email: form.email.trim(),
       password: form.password,
       companyName: form.companyName.trim() || undefined,
       phone: form.phone.trim() || undefined,
-      oaType: form.oaType,
-    };
-
-    if (form.oaType === 'SYSTEM') {
-      if (!form.systemOaId) {
-        toast.warning('Vui lòng chọn một OA hệ thống để gán cho khách hàng.');
-        return;
-      }
-      payload.systemOaId = form.systemOaId;
-    } else if (form.oaType === 'PRIVATE') {
-      if (!form.fptAppId.trim() || !form.fptSecretKey.trim()) {
-        toast.warning('Vui lòng nhập FPT App ID và FPT Secret Key để kết nối OA riêng.');
-        return;
-      }
-      payload.oaName = form.oaName.trim() || form.companyName.trim() || form.fullName.trim() || 'OA Khách hàng';
-      payload.fptAppId = form.fptAppId.trim();
-      payload.fptSecretKey = form.fptSecretKey.trim();
-    }
-
-    createMutation.mutate(payload);
+    });
   };
 
   const handleDirectAddOA = (e) => {
@@ -366,15 +342,9 @@ export default function AdminCustomers() {
                               type="button"
                               className="btn btn-sm btn-secondary"
                               style={{ fontSize: 11, padding: '2px 8px', height: 24 }}
-                              onClick={() => {
-                                setOaTarget(c);
-                                setOaModalTab('SYSTEM');
-                                setSelectedSystemOaId('');
-                                setOaForm({
-                                  oaName: `Ứng dụng ${c.companyName || c.fullName}`,
-                                  fptAppId: '',
-                                  fptSecretKey: '',
-                                });
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/admin/customers/${c.id}`);
                               }}
                             >
                               + Gán ứng dụng
@@ -470,10 +440,10 @@ export default function AdminCustomers() {
       {/* Modal 1: Thêm khách hàng mới */}
       {showCreateModal && (
         <div className="modal-overlay" onClick={() => setShowCreateModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '540px' }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: '520px' }}>
             <div className="modal-header">
               <div className="modal-title" style={{ fontWeight: 600, fontSize: 'var(--font-size-lg)' }}>
-                Thêm khách hàng mới
+                Thêm tài khoản khách hàng mới
               </div>
               <button className="modal-close" onClick={() => setShowCreateModal(false)}>✕</button>
             </div>
@@ -486,14 +456,7 @@ export default function AdminCustomers() {
                       className="form-input"
                       placeholder="VD: Nguyễn Văn A"
                       value={form.fullName}
-                      onChange={e => {
-                        const val = e.target.value;
-                        setForm(prev => ({
-                          ...prev,
-                          fullName: val,
-                          oaName: prev.oaName || (prev.companyName ? `OA ${prev.companyName}` : `OA ${val}`)
-                        }));
-                      }}
+                      onChange={e => setForm({ ...form, fullName: e.target.value })}
                       required
                     />
                   </div>
@@ -534,181 +497,26 @@ export default function AdminCustomers() {
                   </div>
                 </div>
 
-                <div className="form-group" style={{ marginBottom: 'var(--spacing-md)', marginTop: 'var(--spacing-xs)' }}>
+                <div className="form-group" style={{ marginBottom: 'var(--spacing-sm)', marginTop: 'var(--spacing-xs)' }}>
                   <label className="form-label" style={{ fontWeight: 500 }}>Tên doanh nghiệp</label>
                   <input
                     className="form-input"
                     placeholder="VD: Công ty TNHH Dịch vụ ABC"
                     value={form.companyName}
-                    onChange={e => {
-                      const val = e.target.value;
-                      setForm(prev => ({
-                        ...prev,
-                        companyName: val,
-                        oaName: val ? `OA ${val}` : prev.oaName
-                      }));
-                    }}
+                    onChange={e => setForm({ ...form, companyName: e.target.value })}
                   />
                 </div>
 
-                {/* Khối Cấu hình Zalo OA */}
-                <div
-                  style={{
-                    background: 'var(--bg-body)',
-                    border: '1px solid var(--border-color)',
-                    borderRadius: 'var(--border-radius)',
-                    padding: 'var(--spacing-md)',
-                  }}
-                >
-                  <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                    Ứng dụng liên kết
-                  </label>
-
-                  {/* 3 Lựa chọn: Dùng Ứng dụng Hệ thống | Ứng dụng Riêng | Chưa gán ứng dụng */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 'var(--spacing-md)' }}>
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, oaType: 'SYSTEM' })}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: 'var(--border-radius-sm)',
-                        fontSize: 'var(--font-size-xs)',
-                        fontWeight: form.oaType === 'SYSTEM' ? 600 : 500,
-                        background: form.oaType === 'SYSTEM' ? 'var(--color-primary)' : '#ffffff',
-                        color: form.oaType === 'SYSTEM' ? '#ffffff' : 'var(--text-secondary)',
-                        border: '1px solid ' + (form.oaType === 'SYSTEM' ? 'var(--color-primary)' : 'var(--border-color)'),
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <ShieldCheck size={16} weight={form.oaType === 'SYSTEM' ? 'fill' : 'regular'} />
-                      Ứng dụng hệ thống
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, oaType: 'PRIVATE' })}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: 'var(--border-radius-sm)',
-                        fontSize: 'var(--font-size-xs)',
-                        fontWeight: form.oaType === 'PRIVATE' ? 600 : 500,
-                        background: form.oaType === 'PRIVATE' ? 'var(--color-primary)' : '#ffffff',
-                        color: form.oaType === 'PRIVATE' ? '#ffffff' : 'var(--text-secondary)',
-                        border: '1px solid ' + (form.oaType === 'PRIVATE' ? 'var(--color-primary)' : 'var(--border-color)'),
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      <Broadcast size={16} weight={form.oaType === 'PRIVATE' ? 'fill' : 'regular'} />
-                      Ứng dụng riêng
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setForm({ ...form, oaType: 'NONE' })}
-                      style={{
-                        padding: '8px 10px',
-                        borderRadius: 'var(--border-radius-sm)',
-                        fontSize: 'var(--font-size-xs)',
-                        fontWeight: form.oaType === 'NONE' ? 600 : 500,
-                        background: form.oaType === 'NONE' ? 'var(--color-gray-800)' : '#ffffff',
-                        color: form.oaType === 'NONE' ? '#ffffff' : 'var(--text-secondary)',
-                        border: '1px solid ' + (form.oaType === 'NONE' ? 'var(--color-gray-800)' : 'var(--border-color)'),
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 6,
-                        transition: 'all 0.15s ease',
-                      }}
-                    >
-                      Chưa gán ứng dụng
-                    </button>
-                  </div>
-
-                  {/* Chi tiết theo lựa chọn */}
-                  {form.oaType === 'SYSTEM' && (
-                    <div>
-                      {activeSystemOAs.length > 0 ? (
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng hệ thống *</label>
-                          <select
-                            className="form-select"
-                            value={form.systemOaId}
-                            onChange={e => setForm({ ...form, systemOaId: e.target.value })}
-                            required={form.oaType === 'SYSTEM'}
-                          >
-                            <option value="">-- Chọn ứng dụng hệ thống đang hoạt động --</option>
-                            {activeSystemOAs.map(oa => (
-                              <option key={oa.id} value={oa.id}>
-                                {oa.oaName} ({oa._count?.templates || 0} mẫu tin)
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      ) : (
-                        <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning)', padding: '8px 12px', background: 'var(--color-warning-bg)', borderRadius: 'var(--border-radius-sm)' }}>
-                          Chưa có ứng dụng hệ thống nào hoạt động. Vui lòng tạo ứng dụng hệ thống trước hoặc chọn Ứng dụng liên kết riêng.
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {form.oaType === 'PRIVATE' && (
-                    <div>
-                      <div className="form-group" style={{ marginBottom: 'var(--spacing-sm)' }}>
-                        <label className="form-label" style={{ fontWeight: 500 }}>Tên gợi nhớ ứng dụng *</label>
-                        <input
-                          className="form-input"
-                          placeholder="VD: Ứng dụng Khách hàng ABC"
-                          value={form.oaName}
-                          onChange={e => setForm({ ...form, oaName: e.target.value })}
-                          required={form.oaType === 'PRIVATE'}
-                        />
-                      </div>
-
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 500 }}>FPT App ID *</label>
-                          <input
-                            className="form-input"
-                            placeholder="Lấy từ fns.fpt.work"
-                            value={form.fptAppId}
-                            onChange={e => setForm({ ...form, fptAppId: e.target.value })}
-                            required={form.oaType === 'PRIVATE'}
-                            style={{ fontFamily: 'monospace' }}
-                          />
-                        </div>
-                        <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 500 }}>FPT Secret Key *</label>
-                          <input
-                            className="form-input"
-                            type="password"
-                            placeholder="Lấy từ fns.fpt.work"
-                            value={form.fptSecretKey}
-                            onChange={e => setForm({ ...form, fptSecretKey: e.target.value })}
-                            required={form.oaType === 'PRIVATE'}
-                            style={{ fontFamily: 'monospace' }}
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {form.oaType === 'NONE' && (
-                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                      Tài khoản sẽ được tạo mà chưa có ứng dụng liên kết. Bạn có thể gán ứng dụng hệ thống hoặc kết nối ứng dụng riêng bất kỳ lúc nào tại danh sách khách hàng.
-                    </div>
-                  )}
+                <div style={{
+                  padding: '10px 14px',
+                  background: 'var(--bg-body)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--border-radius-sm)',
+                  fontSize: 'var(--font-size-xs)',
+                  color: 'var(--text-secondary)',
+                  lineHeight: '1.5'
+                }}>
+                  Sau khi tạo tài khoản, hệ thống sẽ chuyển đến trang chi tiết khách hàng để bạn có thể gán các ứng dụng (hệ thống hoặc riêng) và nhận API Key tương ứng cho từng ứng dụng.
                 </div>
               </div>
 
@@ -723,7 +531,7 @@ export default function AdminCustomers() {
                   style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
                 >
                   <CheckCircle size={16} />
-                  {createMutation.isPending ? 'Đang tạo...' : 'Lưu và Tạo khách hàng'}
+                  {createMutation.isPending ? 'Đang tạo...' : 'Lưu và Tạo tài khoản'}
                 </button>
               </div>
             </form>

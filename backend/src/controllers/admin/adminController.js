@@ -117,7 +117,7 @@ async function createSystemOAConfig(req, res, next) {
 /** POST /api/v1/admin/customers/:id/assign-system-oa */
 async function assignSystemOA(req, res, next) {
   try {
-    const targetId = req.body.appConfigId;
+    const targetId = req.body.appConfigId || req.body.oaConfigId;
     if (!targetId) {
       return res.status(400).json({ success: false, message: 'Vui lòng chọn Ứng dụng hệ thống cần gán' });
     }

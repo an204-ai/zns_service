@@ -86,7 +86,7 @@ export default function AdminCustomerDetail() {
 
   // Assign System OA mutation
   const assignSystemMutation = useMutation({
-    mutationFn: (oaConfigId) => api.post(`/admin/customers/${id}/assign-system-oa`, { oaConfigId }),
+    mutationFn: (appConfigId) => api.post(`/admin/customers/${id}/assign-system-oa`, { appConfigId }),
     onSuccess: () => {
       refetch();
       setShowSystemOaModal(false);

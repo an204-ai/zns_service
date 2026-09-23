@@ -74,14 +74,6 @@ async function createCustomer({ email, password, fullName, companyName, phone, o
     }
   }
 
-  // Tự động tạo API Key mặc định cho khách hàng
-  try {
-    const apiKeyService = require('./apiKeyService');
-    await apiKeyService.createApiKey(customer.id, 'API Key mặc định');
-  } catch (err) {
-    console.error('Lỗi tự động tạo API Key mặc định cho khách hàng:', err.message);
-  }
-
   return { ...customer, oaConfig, oaError };
 }
 
