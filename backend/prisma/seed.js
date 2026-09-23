@@ -38,7 +38,6 @@ async function main() {
       phone: '0901112222',
       role: 'CUSTOMER',
       status: 'ACTIVE',
-      balance: 500000,
     },
   });
   console.log(`✅ Demo customer created: ${customer.email}`);
