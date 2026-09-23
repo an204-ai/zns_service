@@ -21,7 +21,8 @@ import {
   Check,
   ShieldCheck,
   Broadcast,
-  Sparkle
+  Sparkle,
+  Info
 } from '@phosphor-icons/react';
 
 export default function AdminCustomerDetail() {
@@ -31,6 +32,7 @@ export default function AdminCustomerDetail() {
   const toast = useToast();
 
   // Modals state
+  const [showInfoModal, setShowInfoModal] = useState(false);
   const [showSystemOaModal, setShowSystemOaModal] = useState(false);
   const [selectedSystemOaId, setSelectedSystemOaId] = useState('');
   
@@ -217,17 +219,48 @@ export default function AdminCustomerDetail() {
       </div>
 
       {/* Customer Header Row */}
-      <div className="page-header-row" style={{ alignItems: 'flex-start' }}>
+      <div className="page-header-row" style={{ alignItems: 'flex-start', marginBottom: 'var(--spacing-lg)' }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <h1 className="page-header-title">{customer.fullName}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            <h1 className="page-header-title" style={{ margin: 0 }}>{customer.fullName}</h1>
             <span className={`badge ${customer.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'}`}>
               {customer.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khóa'}
             </span>
+            <button
+              type="button"
+              onClick={() => setShowInfoModal(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: 26,
+                height: 26,
+                borderRadius: '50%',
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                color: '#2563eb',
+                cursor: 'pointer',
+                padding: 0,
+                transition: 'all 0.15s ease',
+              }}
+              title="Bấm để xem đầy đủ thông tin tài khoản"
+            >
+              <Info size={15} weight="bold" />
+            </button>
           </div>
-          <p className="page-header-desc">
-            {customer.companyName ? `${customer.companyName} · ` : ''}{customer.email}
-          </p>
+          <div style={{ fontSize: 13, color: '#64748b', marginTop: 4, display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            {customer.companyName && <span>{customer.companyName}</span>}
+            {customer.companyName && <span>•</span>}
+            <span>{customer.email}</span>
+            {customer.phone && (
+              <>
+                <span>•</span>
+                <span>{customer.phone}</span>
+              </>
+            )}
+            <span>•</span>
+            <span>Khởi tạo: {new Date(customer.createdAt).toLocaleDateString('vi-VN')}</span>
+          </div>
         </div>
 
         {/* Action buttons */}
@@ -239,8 +272,9 @@ export default function AdminCustomerDetail() {
               setShowPasswordModal(true);
               setNewPassword('');
             }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            <Lock size={16} /> Đổi mật khẩu
+            <Lock size={15} /> Đổi mật khẩu
           </button>
 
           <button
@@ -253,8 +287,9 @@ export default function AdminCustomerDetail() {
                 toggleStatusMutation.mutate(nextStatus);
               }
             }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            {customer.status === 'ACTIVE' ? <Lock size={16} /> : <LockOpen size={16} />}
+            {customer.status === 'ACTIVE' ? <Lock size={15} /> : <LockOpen size={15} />}
             {customer.status === 'ACTIVE' ? 'Khóa tài khoản' : 'Kích hoạt tài khoản'}
           </button>
 
@@ -266,65 +301,17 @@ export default function AdminCustomerDetail() {
                 deleteCustomerMutation.mutate();
               }
             }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
           >
-            <Trash size={16} /> Xóa tài khoản
+            <Trash size={15} /> Xóa tài khoản
           </button>
         </div>
       </div>
 
-      {/* Section 1: Customer Profile Overview Card */}
-      <div className="card" style={{ marginBottom: 'var(--spacing-xl)' }}>
-        <div className="card-header">
-          <span className="card-header-title">Thông tin tài khoản</span>
-        </div>
-        <div className="card-body">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: 'var(--spacing-lg)',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>Email đăng nhập</span>
-              <div style={{ fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <EnvelopeSimple size={16} color="#2563eb" /> {customer.email}
-              </div>
-            </div>
-
-            <div>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>Số điện thoại</span>
-              <div style={{ fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Phone size={16} color="#10b981" /> {customer.phone || 'Chưa cập nhật'}
-              </div>
-            </div>
-
-            <div>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>Tên công ty / Doanh nghiệp</span>
-              <div style={{ fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <Buildings size={16} color="#f59e0b" /> {customer.companyName || 'Chưa cập nhật'}
-              </div>
-            </div>
-
-            <div>
-              <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>Ngày tạo tài khoản</span>
-              <div style={{ fontWeight: 600, marginTop: 2, display: 'flex', alignItems: 'center', gap: 6 }}>
-                <CalendarBlank size={16} color="#64748b" /> {new Date(customer.createdAt).toLocaleDateString('vi-VN')}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Section 2: Zalo OAs & Attached API Keys */}
+      {/* Section: Zalo OAs & Attached API Keys */}
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
-          <div>
-            <span className="card-header-title">Danh sách Zalo OA và API Key</span>
-            <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 2 }}>
-              Mỗi OA có 1 API Key ngẫu nhiên riêng biệt dùng để gửi tin ZNS qua hệ thống API
-            </div>
-          </div>
+          <span className="card-header-title">Danh sách Zalo OA và API Key ({customer.allOAs?.length || 0})</span>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -363,7 +350,7 @@ export default function AdminCustomerDetail() {
                 <th>API Key của OA</th>
                 <th>Mẫu tin</th>
                 <th>Trạng thái</th>
-                <th style={{ textAlign: 'right' }}>Thao tác</th>
+                <th style={{ textAlign: 'center' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
@@ -748,6 +735,78 @@ export default function AdminCustomerDetail() {
             <div className="modal-footer">
               <button type="button" className="btn btn-primary" onClick={() => setNewlyGeneratedKey(null)}>
                 Hoàn tất
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Xem chi tiết thông tin tài khoản */}
+      {showInfoModal && (
+        <div className="modal-overlay" onClick={() => setShowInfoModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 460 }}>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <Info size={20} color="#2563eb" weight="bold" />
+                <h3 className="modal-title">Thông tin tài khoản khách hàng</h3>
+              </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setShowInfoModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="modal-body" style={{ padding: '20px 24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Họ và tên</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{customer.fullName}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Email đăng nhập</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#2563eb' }}>{customer.email}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Số điện thoại</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{customer.phone || 'Chưa cập nhật'}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Doanh nghiệp / Công ty</span>
+                  <span style={{ fontSize: 13, fontWeight: 500, color: '#0f172a' }}>{customer.companyName || 'Khách hàng cá nhân'}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Trạng thái tài khoản</span>
+                  <span className={customer.status === 'ACTIVE' ? 'badge-active-pill' : 'badge-inactive-pill'}>
+                    {customer.status === 'ACTIVE' ? 'Đang hoạt động' : 'Đã khóa'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: 10, borderBottom: '1px solid #e2e8f0' }}>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Ngày tạo tài khoản</span>
+                  <span style={{ fontSize: 13, color: '#0f172a' }}>{new Date(customer.createdAt).toLocaleDateString('vi-VN')}</span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Tổng số OA đang dùng</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{customer.allOAs?.length || 0} OA</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowInfoModal(false)}
+              >
+                Đóng
               </button>
             </div>
           </div>

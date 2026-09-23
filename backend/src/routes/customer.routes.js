@@ -40,6 +40,9 @@ router.delete('/api-keys/:id', customer.deleteApiKey);
 
 // OA & Templates
 router.get('/oa-configs', customer.listOAConfigs);
+router.get('/oa-configs/:id/quota', customer.getOAQuota);
+router.get('/oa-configs/:oaId/templates/:templateId/ratings', customer.getTemplateRatings);
+router.get('/oa-configs/:oaId/templates/:templateId/detail', customer.getTemplateDetail);
 router.post('/oa-configs/:id/regenerate-key', customer.regenerateOAKey);
 
 // Send message

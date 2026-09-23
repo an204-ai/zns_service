@@ -9,6 +9,7 @@ import AdminDashboard from './pages/admin/Dashboard';
 import AdminCustomers from './pages/admin/Customers';
 import AdminCustomerDetail from './pages/admin/CustomerDetail';
 import AdminOAConfigs from './pages/admin/OAConfigs';
+import AdminOADetail from './pages/admin/OADetail';
 import AdminTemplates from './pages/admin/Templates';
 import AdminMessages from './pages/admin/Messages';
 
@@ -49,6 +50,7 @@ export default function App() {
         <Route path="customers" element={<AdminCustomers />} />
         <Route path="customers/:id" element={<AdminCustomerDetail />} />
         <Route path="oa-configs" element={<AdminOAConfigs />} />
+        <Route path="oa-configs/:id" element={<AdminOADetail />} />
         <Route path="templates" element={<AdminTemplates />} />
         <Route path="messages" element={<AdminMessages />} />
       </Route>

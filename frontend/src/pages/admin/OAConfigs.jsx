@@ -1,81 +1,58 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import {
   Plus,
-  ArrowsClockwise,
   ShieldCheck,
   Trash,
-  Power,
   X,
-  Users
+  Users,
+  Eye
 } from '@phosphor-icons/react';
 
 export default function AdminOAConfigs() {
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
 
-  // Modal OA Hệ thống
+  // Modal: Thêm OA Hệ thống
   const [showSystemModal, setShowSystemModal] = useState(false);
   const [systemForm, setSystemForm] = useState({ oaName: '', fptAppId: '', fptSecretKey: '' });
   const [systemErrorMsg, setSystemErrorMsg] = useState('');
 
-  // Danh sách OA Hệ thống
+  // Danh sách ứng dụng hệ thống
   const { data: systemOAs, isLoading } = useQuery({
     queryKey: ['admin-oa-system'],
     queryFn: () => api.get('/admin/oa-configs/system').then(r => r.data.data),
   });
 
-  // Tạo OA Hệ thống mutation
+  // Tạo ứng dụng hệ thống mutation
   const createSystemMutation = useMutation({
     mutationFn: (d) => api.post('/admin/oa-configs/system', d),
-    onSuccess: () => {
+    onSuccess: (res) => {
       queryClient.invalidateQueries(['admin-oa-system']);
       setShowSystemModal(false);
       setSystemForm({ oaName: '', fptAppId: '', fptSecretKey: '' });
-      toast.success('Thêm OA Hệ thống thành công và đã đồng bộ mẫu tin!');
+      toast.success(res.data?.message || 'Thêm ứng dụng thành công!');
     },
     onError: (err) => {
-      const msg = err.response?.data?.message || 'Có lỗi xảy ra khi tạo OA Hệ thống';
+      const msg = err.response?.data?.message || 'Có lỗi xảy ra khi tạo ứng dụng';
       setSystemErrorMsg(msg);
       toast.error(msg);
     },
   });
 
-  // Đồng bộ templates & OA info
-  const syncMutation = useMutation({
-    mutationFn: (id) => api.post(`/admin/oa-configs/${id}/sync`),
-    onSuccess: (r) => {
-      queryClient.invalidateQueries(['admin-oa-system']);
-      toast.success(`Đồng bộ thành công! Đã cập nhật ${r.data.data.templatesCount || 0} mẫu tin.`);
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi đồng bộ cấu hình OA');
-    },
-  });
-
-  // Cập nhật trạng thái OA
-  const toggleStatusMutation = useMutation({
-    mutationFn: ({ id, status }) => api.patch(`/admin/oa-configs/${id}/status`, { status }),
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries(['admin-oa-system']);
-      toast.success(vars.status === 'ACTIVE' ? 'Đã kích hoạt OA hệ thống' : 'Đã tạm dừng OA hệ thống');
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cập nhật trạng thái');
-    },
-  });
-
-  // Xóa OA hệ thống
+  // Xóa ứng dụng hệ thống
   const deleteMutation = useMutation({
     mutationFn: (id) => api.delete(`/admin/oa-configs/${id}`),
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-oa-system']);
-      toast.success('Đã xóa OA hệ thống thành công');
+      toast.success('Đã xóa ứng dụng thành công');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi xóa OA hệ thống');
+      toast.error(err.response?.data?.message || 'Lỗi khi xóa ứng dụng');
     },
   });
 
@@ -92,140 +69,131 @@ export default function AdminOAConfigs() {
   return (
     <div>
       {/* Page Header Row */}
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-header-title">Quản lý OA hệ thống</h1>
-          <p className="page-header-desc">
-            Cấu hình và đồng bộ các Zalo OA của hệ thống dùng chung cho khách hàng
-          </p>
-        </div>
-        <button
-          type="button"
-          className="btn btn-primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
-          onClick={() => {
-            setShowSystemModal(true);
-            setSystemErrorMsg('');
-            setSystemForm({ oaName: '', fptAppId: '', fptSecretKey: '' });
-          }}
-        >
-          <Plus size={18} weight="bold" /> Thêm OA hệ thống
-        </button>
+      <div className="console-section-header">
+        <h1 className="console-section-title">Quản lý ứng dụng</h1>
+        <p className="console-section-desc">
+          Cấu hình và đồng bộ các ứng dụng kết nối Zalo Official Account từ cổng FPT Telecom dùng chung cho các khách hàng
+        </p>
       </div>
 
-      {/* System OAs Table */}
-      <div className="card">
+      <div className="console-toolbar">
+        <div className="console-toolbar-left" />
+        <div className="console-toolbar-right">
+          <button
+            type="button"
+            className="console-primary-btn"
+            onClick={() => {
+              setShowSystemModal(true);
+              setSystemErrorMsg('');
+              setSystemForm({ oaName: '', fptAppId: '', fptSecretKey: '' });
+            }}
+          >
+            <Plus size={16} weight="bold" /> Thêm ứng dụng
+          </button>
+        </div>
+      </div>
+
+      {/* System Applications Table */}
+      <div className="console-card-table">
         {isLoading ? (
           <div className="loading-overlay"><div className="spinner" /></div>
         ) : (
           <div className="table-wrapper">
-            <table className="table">
+            <table className="table" style={{ width: '100%', tableLayout: 'auto' }}>
               <thead>
                 <tr>
-                  <th>Tên gợi nhớ OA</th>
-                  <th>Mã OA</th>
-                  <th>App ID</th>
-                  <th>Khách hàng đang dùng</th>
-                  <th>Mẫu tin</th>
-                  <th>Trạng thái</th>
-                  <th>Lần đồng bộ</th>
-                  <th style={{ textAlign: 'right' }}>Thao tác</th>
+                  <th style={{ width: 44, textAlign: 'center' }}>#</th>
+                  <th style={{ width: '32%', textAlign: 'left' }}>Tên ứng dụng</th>
+                  <th style={{ width: '18%', textAlign: 'center' }}>Mã Zalo OA</th>
+                  <th style={{ width: '14%', textAlign: 'center' }}>Khách hàng</th>
+                  <th style={{ width: '12%', textAlign: 'center' }}>Mẫu tin</th>
+                  <th style={{ width: '12%', textAlign: 'center' }}>Trạng thái</th>
+                  <th style={{ width: '12%', textAlign: 'center' }}>Thao tác</th>
                 </tr>
               </thead>
               <tbody>
-                {systemOAs?.map(oa => (
-                  <tr key={oa.id}>
+                {systemOAs?.map((oa, index) => (
+                  <tr
+                    key={oa.id}
+                    className="clickable-row"
+                    onClick={() => navigate(`/admin/oa-configs/${oa.id}`)}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <td className="table-col-index">{index + 1}</td>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div
-                          style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 'var(--border-radius)',
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 700,
-                            fontSize: 12,
+                      <div>
+                        <span
+                          className="table-cell-link"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/admin/oa-configs/${oa.id}`);
                           }}
                         >
-                          OA
+                          {oa.oaName}
+                        </span>
+                        <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+                          App ID: <span style={{ fontFamily: 'monospace' }}>{oa.fptAppId}</span>
                         </div>
-                        <div>
-                          <div className="table-cell-bold">{oa.oaName}</div>
-                          <span className="badge badge-primary" style={{ fontSize: '10px', padding: '1px 6px', marginTop: 2 }}>
-                            OA Hệ thống
-                          </span>
-                        </div>
+                        <span className="badge badge-primary" style={{ fontSize: 10, padding: '1px 6px', marginTop: 3, display: 'inline-block' }}>
+                          Ứng dụng hệ thống
+                        </span>
                       </div>
                     </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>
-                      {oa.oaId || 'Chưa cập nhật'}
+                    <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 12.5, fontWeight: 500 }}>
+                      {oa.oaId || '—'}
                     </td>
-                    <td style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>
-                      {oa.fptAppId}
-                    </td>
-                    <td>
+                    <td style={{ textAlign: 'center' }}>
                       <span
                         style={{
                           display: 'inline-flex',
                           alignItems: 'center',
                           gap: 4,
-                          fontSize: 'var(--font-size-xs)',
-                          color: 'var(--text-secondary)',
-                          background: 'var(--color-gray-100)',
+                          fontSize: 12,
+                          color: '#334155',
+                          background: '#f1f5f9',
                           padding: '3px 8px',
-                          borderRadius: 'var(--border-radius-sm)',
+                          borderRadius: 4,
+                          whiteSpace: 'nowrap',
                         }}
                       >
-                        <Users size={14} color="#2563eb" />
-                        <strong>{oa._count?.assignments || 0}</strong> khách hàng
+                        <Users size={13} color="#2563eb" />
+                        <strong>{oa._count?.assignments || 0}</strong> khách
                       </span>
                     </td>
-                    <td>
-                      <span className="badge badge-neutral">
-                        {oa._count?.templates || 0} template
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="badge badge-neutral" style={{ whiteSpace: 'nowrap' }}>
+                        {oa._count?.templates || 0} mẫu
                       </span>
                     </td>
-                    <td>
-                      <span className={`badge ${oa.status === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}`}>
-                        {oa.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
-                      </span>
+                    <td style={{ textAlign: 'center' }}>
+                      {oa.status === 'ACTIVE' ? (
+                        <span className="badge-active-pill" style={{ whiteSpace: 'nowrap' }}>Đang hoạt động</span>
+                      ) : (
+                        <span className="badge-inactive-pill" style={{ whiteSpace: 'nowrap' }}>Tạm dừng</span>
+                      )}
                     </td>
-                    <td style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
-                      {oa.syncedAt ? new Date(oa.syncedAt).toLocaleString('vi-VN') : 'Chưa đồng bộ'}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: 6 }}>
+                    <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                         <button
+                          type="button"
                           className="btn btn-sm btn-secondary"
-                          title="Đồng bộ mẫu tin"
-                          disabled={syncMutation.isPending}
-                          onClick={() => syncMutation.mutate(oa.id)}
+                          title="Xem chi tiết ứng dụng"
+                          onClick={() => navigate(`/admin/oa-configs/${oa.id}`)}
+                          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
                         >
-                          <ArrowsClockwise size={14} className={syncMutation.isPending ? 'spin' : ''} />
-                          Đồng bộ
+                          <Eye size={14} />
+                          <span>Chi tiết</span>
                         </button>
                         <button
-                          className={`btn btn-sm ${oa.status === 'ACTIVE' ? 'btn-secondary' : 'btn-success'}`}
-                          title={oa.status === 'ACTIVE' ? 'Tạm dừng' : 'Kích hoạt'}
-                          onClick={() => toggleStatusMutation.mutate({
-                            id: oa.id,
-                            status: oa.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE',
-                          })}
-                        >
-                          <Power size={14} />
-                        </button>
-                        <button
+                          type="button"
                           className="btn btn-sm btn-danger"
-                          title="Xóa OA hệ thống"
+                          title="Xóa ứng dụng"
                           onClick={() => {
-                            if (window.confirm(`Bạn có chắc chắn muốn xóa OA Hệ thống "${oa.oaName}"?`)) {
+                            if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${oa.oaName}"?`)) {
                               deleteMutation.mutate(oa.id);
                             }
                           }}
+                          style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}
                         >
                           <Trash size={14} />
                         </button>
@@ -236,10 +204,10 @@ export default function AdminOAConfigs() {
 
                 {!systemOAs?.length && (
                   <tr>
-                    <td colSpan={8} className="empty-state">
-                      <div className="empty-state-title">Chưa có OA Hệ thống</div>
+                    <td colSpan={7} className="empty-state">
+                      <div className="empty-state-title">Chưa có ứng dụng nào</div>
                       <div className="empty-state-text">
-                        Thêm OA Zalo của hệ thống để gắn cho các khách hàng không có OA riêng
+                        Thêm ứng dụng kết nối Zalo OA từ cổng FPT Telecom để cấu hình gửi tin ZNS
                       </div>
                     </td>
                   </tr>
@@ -250,18 +218,18 @@ export default function AdminOAConfigs() {
         )}
       </div>
 
-      {/* Modal: Thêm OA Hệ thống */}
+      {/* Modal: Thêm ứng dụng */}
       {showSystemModal && (
         <div className="modal-overlay" onClick={() => setShowSystemModal(false)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <ShieldCheck size={22} color="#2563eb" weight="fill" />
-                <h2 className="modal-title">Thêm OA Hệ thống mới</h2>
+                <h2 className="modal-title">Thêm ứng dụng mới</h2>
               </div>
               <button
                 type="button"
-                className="modal-close-btn"
+                className="modal-close"
                 onClick={() => setShowSystemModal(false)}
               >
                 <X size={18} />
@@ -287,36 +255,39 @@ export default function AdminOAConfigs() {
                 )}
 
                 <div className="form-group">
-                  <label className="form-label">Tên gợi nhớ OA *</label>
+                  <label className="form-label" style={{ fontWeight: 500 }}>Tên ứng dụng *</label>
                   <input
                     className="form-input"
-                    placeholder="Ví dụ: Zalo OA Tổng Hệ Thống"
+                    placeholder="Ví dụ: CloudVerify hoặc Ứng dụng test"
                     value={systemForm.oaName}
                     onChange={e => setSystemForm({ ...systemForm, oaName: e.target.value })}
+                    required
                   />
                   <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
-                    Tên phân biệt giúp bạn nhận diện OA này trong danh sách
+                    Tên ứng dụng đồng bộ theo thông tin trên cổng FPT fns.fpt.work
                   </span>
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">FPT App ID *</label>
+                  <label className="form-label" style={{ fontWeight: 500 }}>App ID *</label>
                   <input
                     className="form-input"
-                    placeholder="App ID cung cấp bởi FPT"
+                    placeholder="Lấy từ fns.fpt.work (VD: 1790070220)"
                     value={systemForm.fptAppId}
                     onChange={e => setSystemForm({ ...systemForm, fptAppId: e.target.value })}
+                    required
                   />
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">FPT Secret Key *</label>
+                  <label className="form-label" style={{ fontWeight: 500 }}>Secret Key *</label>
                   <input
                     type="password"
                     className="form-input"
-                    placeholder="Secret Key cung cấp bởi FPT"
+                    placeholder="Lấy từ fns.fpt.work"
                     value={systemForm.fptSecretKey}
                     onChange={e => setSystemForm({ ...systemForm, fptSecretKey: e.target.value })}
+                    required
                   />
                   <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
                     Khóa bí mật sẽ được mã hóa chuẩn AES 256 GCM trước khi lưu vào cơ sở dữ liệu
@@ -337,7 +308,7 @@ export default function AdminOAConfigs() {
                   className="btn btn-primary"
                   disabled={createSystemMutation.isPending}
                 >
-                  {createSystemMutation.isPending ? 'Đang kết nối FPT...' : 'Lưu OA hệ thống'}
+                  {createSystemMutation.isPending ? 'Đang kết nối FPT...' : 'Lưu ứng dụng'}
                 </button>
               </div>
             </form>

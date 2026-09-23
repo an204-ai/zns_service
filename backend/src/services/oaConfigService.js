@@ -11,12 +11,17 @@ async function createOAConfig({ userId, oaName, fptAppId, fptSecretKey, isSystem
 
   // Try to get OA info from FPT to validate credentials
   let oaInfo = null;
-  let quotaInfo = null;
+  let connectionWarning = null;
   try {
     oaInfo = await fptAdapter.getOAInfo(fptAppId, fptSecretKey);
-    quotaInfo = await fptAdapter.getQuota(fptAppId, fptSecretKey);
   } catch (error) {
-    throw Object.assign(new Error('Không thể kết nối FPT. Vui lòng kiểm tra App ID và Secret Key'), { statusCode: 400 });
+    // If FPT explicitly returned invalid credentials (status !== 1 from FPT)
+    if (error.statusCode === 400) {
+      throw error;
+    }
+    // If network connection error / timeout (e.g. FPT firewall has not whitelisted local IP yet)
+    connectionWarning = error.message;
+    console.warn('[createOAConfig Network Warning]:', error.message);
   }
 
   const oaConfig = await prisma.fptOaConfig.create({
@@ -27,14 +32,19 @@ async function createOAConfig({ userId, oaName, fptAppId, fptSecretKey, isSystem
       fptAppId,
       fptSecretKeyEncrypted: encrypted,
       isSystem,
-      oaInfo,
-      quotaInfo,
+      oaInfo: oaInfo || { name: oaName, note: connectionWarning || 'Chờ kết nối FPT ZBS' },
       syncedAt: new Date(),
     },
   });
 
-  // Auto-sync templates
-  await syncTemplates(oaConfig.id, fptAppId, fptSecretKey);
+  // Auto-sync templates if FPT connection succeeded
+  if (oaInfo) {
+    try {
+      await syncTemplates(oaConfig.id, fptAppId, fptSecretKey);
+    } catch (err) {
+      console.warn('Lỗi đồng bộ template khi tạo OA:', err.message);
+    }
+  }
 
   // Auto-create API Key for this OA
   if (userId) {
@@ -46,7 +56,10 @@ async function createOAConfig({ userId, oaName, fptAppId, fptSecretKey, isSystem
     }
   }
 
-  return oaConfig;
+  return {
+    ...oaConfig,
+    connectionWarning,
+  };
 }
 
 /**
@@ -266,23 +279,19 @@ async function resyncOAConfig(oaConfigId) {
 
   const secretKey = decrypt(config.fptSecretKeyEncrypted);
 
-  const [oaInfo, quotaInfo] = await Promise.all([
-    fptAdapter.getOAInfo(config.fptAppId, secretKey),
-    fptAdapter.getQuota(config.fptAppId, secretKey),
-  ]);
+  const oaInfo = await fptAdapter.getOAInfo(config.fptAppId, secretKey);
 
   await prisma.fptOaConfig.update({
     where: { id: oaConfigId },
     data: {
       oaInfo,
-      quotaInfo,
       oaId: oaInfo?.oa_id || config.oaId,
       syncedAt: new Date(),
     },
   });
 
   const templates = await syncTemplates(oaConfigId, config.fptAppId, secretKey);
-  return { oaInfo, quotaInfo, templatesCount: templates.length };
+  return { oaInfo, templatesCount: templates.length };
 }
 
 /**
@@ -309,6 +318,179 @@ async function deleteOAConfig(id) {
   });
 }
 
+/**
+ * Update an existing OA config
+ */
+async function updateOAConfig(id, { oaName, fptAppId, fptSecretKey, status }) {
+  const existing = await prisma.fptOaConfig.findUnique({ where: { id } });
+  if (!existing) throw Object.assign(new Error('Cấu hình OA không tồn tại'), { statusCode: 404 });
+
+  const data = {};
+  if (oaName !== undefined && oaName.trim()) {
+    data.oaName = oaName.trim();
+  }
+  if (fptAppId !== undefined && fptAppId.trim()) {
+    data.fptAppId = fptAppId.trim();
+  }
+  if (fptSecretKey && fptSecretKey.trim()) {
+    data.fptSecretKeyEncrypted = encrypt(fptSecretKey.trim());
+  }
+  if (status && (status === 'ACTIVE' || status === 'INACTIVE')) {
+    data.status = status;
+  }
+
+  // If App ID or Secret Key changed, try to validate with FPT and refresh oaId
+  const effectiveAppId = data.fptAppId || existing.fptAppId;
+  let effectiveSecretKey = null;
+  try {
+    effectiveSecretKey = fptSecretKey && fptSecretKey.trim() ? fptSecretKey.trim() : decrypt(existing.fptSecretKeyEncrypted);
+  } catch (err) {
+    console.warn('Decrypt error during updateOAConfig:', err.message);
+  }
+
+  if (effectiveSecretKey && (data.fptAppId || (fptSecretKey && fptSecretKey.trim()))) {
+    try {
+      const oaInfo = await fptAdapter.getOAInfo(effectiveAppId, effectiveSecretKey);
+      if (oaInfo?.oa_id) {
+        data.oaId = oaInfo.oa_id;
+      }
+    } catch (e) {
+      console.warn('FPT getOAInfo check warning:', e.message);
+    }
+  }
+
+  const updated = await prisma.fptOaConfig.update({
+    where: { id },
+    data,
+  });
+
+  return updated;
+}
+
+/**
+ * Get ZNS Quota for an OA config
+ */
+async function getOAQuota(oaConfigId, forceRefresh = false) {
+  const { appId, secretKey } = await getDecryptedCredentials(oaConfigId);
+  return fptAdapter.getQuota(appId, secretKey, forceRefresh);
+}
+
+/**
+ * Get Customer Ratings for a template
+ */
+async function getTemplateRatings(oaConfigId, templateId, { fromTime, toTime, page = 1 }) {
+  const { appId, secretKey } = await getDecryptedCredentials(oaConfigId);
+
+  // Default dates: last 30 days if not provided
+  let from = fromTime;
+  let to = toTime;
+  if (!from || !to) {
+    const now = new Date();
+    const past = new Date();
+    past.setDate(now.getDate() - 30);
+    to = now.toISOString().split('T')[0];
+    from = past.toISOString().split('T')[0];
+  }
+
+  const result = await fptAdapter.getRatings(appId, secretKey, {
+    templateId,
+    fromTime: from,
+    toTime: to,
+    page,
+  });
+
+  // Calculate rating stats
+  let avgRate = 0;
+  const list = result?.data || [];
+  if (Array.isArray(list) && list.length > 0) {
+    const sum = list.reduce((acc, curr) => acc + (Number(curr.rate) || 0), 0);
+    avgRate = Math.round((sum / list.length) * 10) / 10;
+  }
+
+  return {
+    ...result,
+    fromTime: from,
+    toTime: to,
+    page: Number(page) || 1,
+    avgRate,
+  };
+}
+
+/**
+ * Get live detailed template data from FPT and update DB cache
+ */
+async function getTemplateLiveDetail(oaConfigId, templateId) {
+  const { appId, secretKey } = await getDecryptedCredentials(oaConfigId);
+  let detail = null;
+  let liveDetailError = null;
+
+  try {
+    const detailResult = await fptAdapter.getTemplateDetail(appId, secretKey, Number(templateId));
+    if (detailResult?.status === 1 && detailResult?.data) {
+      detail = detailResult.data;
+
+      await prisma.znsTemplate.upsert({
+        where: {
+          fptOaConfigId_templateId: {
+            fptOaConfigId: oaConfigId,
+            templateId: Number(templateId),
+          },
+        },
+        update: {
+          templateName: detail.templateName || undefined,
+          templateTag: detail.templateTag || null,
+          templateQuality: detail.templateQuality || null,
+          listParams: detail.listParams || null,
+          listButtons: detail.listButtons || null,
+          previewUrl: detail.previewUrl || null,
+          templateContent: detail.templateContent || null,
+          status: detail.status === 'ENABLE' ? 'ENABLE' : detail.status === 'PENDING' ? 'PENDING' : 'LOCKED',
+          syncedAt: new Date(),
+        },
+        create: {
+          fptOaConfigId: oaConfigId,
+          templateId: Number(templateId),
+          templateName: detail.templateName || `Template #${templateId}`,
+          templateTag: detail.templateTag || null,
+          templateQuality: detail.templateQuality || null,
+          listParams: detail.listParams || null,
+          listButtons: detail.listButtons || null,
+          previewUrl: detail.previewUrl || null,
+          templateContent: detail.templateContent || null,
+          status: 'ENABLE',
+          syncedAt: new Date(),
+        },
+      });
+    }
+  } catch (err) {
+    liveDetailError = err.message;
+  }
+
+  const dbTemplate = await prisma.znsTemplate.findFirst({
+    where: {
+      fptOaConfigId: oaConfigId,
+      templateId: Number(templateId),
+    },
+    include: {
+      fptOaConfig: {
+        select: { id: true, oaName: true, oaId: true, isSystem: true },
+      },
+    },
+  });
+
+  if (!dbTemplate && liveDetailError) {
+    const error = new Error(liveDetailError);
+    error.statusCode = 400;
+    throw error;
+  }
+
+  return {
+    ...dbTemplate,
+    liveDetail: detail,
+    liveDetailError,
+  };
+}
+
 module.exports = {
   createOAConfig,
   syncTemplates,
@@ -321,4 +503,9 @@ module.exports = {
   resyncOAConfig,
   updateOAStatus,
   deleteOAConfig,
+  updateOAConfig,
+  getOAQuota,
+  getTemplateRatings,
+  getTemplateLiveDetail,
 };
+

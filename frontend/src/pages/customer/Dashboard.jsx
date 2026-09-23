@@ -1,15 +1,8 @@
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import api from '../../services/api';
 import {
   TrendUp,
   CalendarBlank,
-  Sparkle,
-  CaretRight,
-  X,
-  ChatCircleText,
-  PhoneCall
 } from '@phosphor-icons/react';
 import {
   ComposedChart,
@@ -24,9 +17,6 @@ import {
 import { useSocket } from '../../hooks/useSocket';
 
 export default function CustomerDashboard() {
-  const navigate = useNavigate();
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['customer-dashboard'],
     queryFn: () => api.get('/customer/dashboard').then(r => r.data.data),
@@ -50,12 +40,6 @@ export default function CustomerDashboard() {
   const stats = data || {};
   const monthStats = stats.monthStats || { transactions: 0, requests: 0 };
   const todayStats = stats.todayStats || { transactions: 0, requests: 0 };
-  const quota = stats.quota || {
-    used: 0,
-    total: 60000,
-    available: 60000,
-    percent: 0,
-  };
   const chartData = stats.chartData || [];
 
   // Calculate formatted date range for 8-day filter pill
@@ -73,16 +57,16 @@ export default function CustomerDashboard() {
       return (
         <div
           style={{
-            background: 'rgba(255, 255, 255, 0.98)',
+            background: 'var(--bg-card)',
+            padding: '10px 14px',
             border: '1px solid var(--border-color)',
             borderRadius: 'var(--border-radius)',
-            padding: '10px 14px',
             boxShadow: 'var(--shadow-md)',
-            fontSize: '12px',
+            fontSize: 'var(--font-size-xs)',
           }}
         >
-          <div style={{ fontWeight: 600, marginBottom: '6px', color: 'var(--text-primary)' }}>
-            Ngày: {label}
+          <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>
+            {label}
           </div>
           {payload.map((entry, index) => (
             <div
@@ -90,23 +74,24 @@ export default function CustomerDashboard() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: '8px',
-                color: entry.color,
-                fontWeight: 600,
-                marginTop: '3px',
+                gap: 8,
+                color: entry.name === 'Transactions' ? '#2563eb' : '#8b5cf6',
+                fontWeight: 500,
+                marginTop: 2,
               }}
             >
-              <span
+              <div
                 style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '2px',
-                  background: entry.color,
-                  display: 'inline-block',
+                  width: 8,
+                  height: 8,
+                  borderRadius: '50%',
+                  backgroundColor: entry.name === 'Transactions' ? '#2563eb' : '#8b5cf6',
                 }}
               />
               <span>{entry.name}:</span>
-              <span>{entry.value?.toLocaleString('en-US')}</span>
+              <span style={{ fontWeight: 700 }}>
+                {entry.value.toLocaleString('en-US')}
+              </span>
             </div>
           ))}
         </div>
@@ -116,11 +101,11 @@ export default function CustomerDashboard() {
   };
 
   return (
-    <div>
+    <div className="overview-page">
       {/* Page Header with concise title and short description */}
       <div className="page-header">
         <h1 className="page-header-title">Tổng quan</h1>
-        <p className="page-header-desc">Theo dõi số lượng giao dịch và hạn mức gửi tin ZNS</p>
+        <p className="page-header-desc">Theo dõi số lượng giao dịch và hiệu quả gửi tin ZNS</p>
       </div>
 
       {/* Row 1: Two metric cards */}
@@ -170,42 +155,7 @@ export default function CustomerDashboard() {
         </div>
       </div>
 
-      {/* Row 2: Total Quota card */}
-      <div className="overview-quota-card">
-        <div className="overview-quota-header">
-          <span className="overview-quota-title">Total Quota</span>
-          <span className="overview-quota-percent">{quota.percent}% đã dùng</span>
-        </div>
-        <div className="overview-quota-track">
-          <div
-            className="overview-quota-fill"
-            style={{ width: `${Math.min(100, Math.max(0, quota.percent))}%` }}
-          />
-        </div>
-        <div className="overview-quota-footer">
-          <div className="overview-quota-info">
-            Đã dùng {quota.used.toLocaleString('en-US')} · Tổng {quota.total.toLocaleString('en-US')} · Khả dụng {quota.available.toLocaleString('en-US')}
-          </div>
-          <div className="overview-quota-actions">
-            <button
-              type="button"
-              className="overview-quota-link"
-              onClick={() => navigate('/customer/oa-info')}
-            >
-              <CaretRight size={13} weight="bold" /> Chi tiết
-            </button>
-            <button
-              type="button"
-              className="overview-quota-upgrade-btn"
-              onClick={() => setShowUpgradeModal(true)}
-            >
-              <Sparkle size={14} weight="fill" /> Nâng cấp
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Row 3: Date range pill */}
+      {/* Row 2: Date range pill */}
       <div className="overview-chart-filter-bar">
         <div className="overview-date-pill">
           <CalendarBlank size={16} weight="duotone" color="var(--color-gray-500)" />
@@ -213,7 +163,7 @@ export default function CustomerDashboard() {
         </div>
       </div>
 
-      {/* Row 4: Transactions & Requests Chart */}
+      {/* Row 3: Transactions & Requests Chart */}
       <div className="overview-chart-card">
         <div className="overview-chart-title">Transactions & Requests</div>
         <div style={{ width: '100%', height: 340 }}>
@@ -282,62 +232,6 @@ export default function CustomerDashboard() {
           </ResponsiveContainer>
         </div>
       </div>
-
-      {/* Upgrade modal */}
-      {showUpgradeModal && (
-        <div className="modal-overlay" onClick={() => setShowUpgradeModal(false)}>
-          <div
-            className="modal-content"
-            style={{ maxWidth: 460 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <h2 className="modal-title">Nâng cấp hạn mức ZNS</h2>
-              <button
-                type="button"
-                className="modal-close-btn"
-                onClick={() => setShowUpgradeModal(false)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-md)' }}>
-                Để nâng cấp hạn mức gửi tin ZNS hoặc mở rộng gói dịch vụ doanh nghiệp, quý khách vui lòng liên hệ quản trị viên:
-              </p>
-              <div
-                style={{
-                  background: 'var(--color-gray-50)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--border-radius)',
-                  padding: 'var(--spacing-md)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 'var(--spacing-sm)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--font-size-sm)' }}>
-                  <PhoneCall size={18} color="#2563eb" />
-                  <span>Hotline hỗ trợ: <strong>1900 6600</strong></span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: 'var(--font-size-sm)' }}>
-                  <ChatCircleText size={18} color="#10b981" />
-                  <span>Hỗ trợ kỹ thuật: <strong>support@znsportal.vn</strong></span>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer" style={{ justifyContent: 'flex-end' }}>
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setShowUpgradeModal(false)}
-              >
-                Đã hiểu
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,14 +1,15 @@
 const { prisma } = require('../config/database');
-const { generateApiKey, hashApiKey, getApiKeyPrefix } = require('../utils/crypto');
+const { generateApiKey, hashApiKey, getApiKeyPrefix, encrypt, decrypt } = require('../utils/crypto');
 
 /**
  * Create a new API key for a user (optionally associated with an OA config)
- * Returns the plain API key only once
+ * Saves encrypted key so user can view/copy anytime
  */
 async function createApiKey(userId, keyName, oaConfigId = null) {
   const plainKey = generateApiKey();
   const apiKeyHash = hashApiKey(plainKey);
   const prefix = getApiKeyPrefix(plainKey);
+  const apiKeyEncrypted = encrypt(plainKey);
 
   const apiKey = await prisma.apiKey.create({
     data: {
@@ -16,6 +17,7 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
       oaConfigId: oaConfigId || null,
       keyName,
       apiKeyHash,
+      apiKeyEncrypted,
       prefix,
       isActive: true,
     },
@@ -32,14 +34,14 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
     prefix: apiKey.prefix,
     oaConfigId: apiKey.oaConfigId,
     oaConfig: apiKey.oaConfig,
-    apiKey: plainKey, // Only returned once at creation
+    apiKey: plainKey,
     createdAt: apiKey.createdAt,
   };
 }
 
 /**
  * Ensure an API key exists for a user and OA config
- * If exists, returns it; if not, creates a new one
+ * If exists, returns it with decrypted key; if not, creates a new one
  */
 async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
   let key = await prisma.apiKey.findFirst({
@@ -58,10 +60,33 @@ async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
     return key;
   }
 
+  let plainKey = null;
+  if (key.apiKeyEncrypted) {
+    try {
+      plainKey = decrypt(key.apiKeyEncrypted);
+    } catch (e) {
+      console.error('Failed to decrypt apiKey:', e.message);
+    }
+  }
+
+  // If existing record did not have apiKeyEncrypted, upgrade it with a new key
+  if (!plainKey) {
+    plainKey = generateApiKey();
+    const apiKeyHash = hashApiKey(plainKey);
+    const prefix = getApiKeyPrefix(plainKey);
+    const apiKeyEncrypted = encrypt(plainKey);
+    await prisma.apiKey.update({
+      where: { id: key.id },
+      data: { apiKeyHash, apiKeyEncrypted, prefix },
+    });
+    key.prefix = prefix;
+  }
+
   return {
     id: key.id,
     keyName: key.keyName,
     prefix: key.prefix,
+    apiKey: plainKey,
     oaConfigId: key.oaConfigId,
     oaConfig: key.oaConfig,
     isActive: key.isActive,
@@ -77,6 +102,7 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
   const plainKey = generateApiKey();
   const apiKeyHash = hashApiKey(plainKey);
   const prefix = getApiKeyPrefix(plainKey);
+  const apiKeyEncrypted = encrypt(plainKey);
 
   const existing = await prisma.apiKey.findFirst({ where: { userId, oaConfigId } });
 
@@ -85,6 +111,7 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
       where: { id: existing.id },
       data: {
         apiKeyHash,
+        apiKeyEncrypted,
         prefix,
         isActive: true,
         lastUsedAt: null,
@@ -105,6 +132,7 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
         oaConfigId,
         keyName: oa ? `Khóa API - ${oa.oaName}` : 'Khóa API ZNS',
         apiKeyHash,
+        apiKeyEncrypted,
         prefix,
         isActive: true,
       },
@@ -120,15 +148,16 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
 }
 
 /**
- * Get all API keys for a user (without hash)
+ * Get all API keys for a user (with decrypted plain keys)
  */
 async function getApiKeys(userId) {
-  return prisma.apiKey.findMany({
+  const keys = await prisma.apiKey.findMany({
     where: { userId },
     select: {
       id: true,
       keyName: true,
       prefix: true,
+      apiKeyEncrypted: true,
       oaConfigId: true,
       isActive: true,
       lastUsedAt: true,
@@ -138,6 +167,26 @@ async function getApiKeys(userId) {
       },
     },
     orderBy: { createdAt: 'desc' },
+  });
+
+  return keys.map((k) => {
+    let plainKey = null;
+    if (k.apiKeyEncrypted) {
+      try {
+        plainKey = decrypt(k.apiKeyEncrypted);
+      } catch (e) {}
+    }
+    return {
+      id: k.id,
+      keyName: k.keyName,
+      prefix: k.prefix,
+      apiKey: plainKey || `${k.prefix}...`,
+      oaConfigId: k.oaConfigId,
+      isActive: k.isActive,
+      lastUsedAt: k.lastUsedAt,
+      createdAt: k.createdAt,
+      oaConfig: k.oaConfig,
+    };
   });
 }
 

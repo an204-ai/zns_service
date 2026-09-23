@@ -102,12 +102,15 @@ async function createSystemOAConfig(req, res, next) {
     }
     const config = await oaConfigService.createOAConfig({
       userId: req.user.id,
-      oaName,
-      fptAppId,
-      fptSecretKey,
+      oaName: oaName.trim(),
+      fptAppId: fptAppId.trim(),
+      fptSecretKey: fptSecretKey.trim(),
       isSystem: true,
     });
-    res.status(201).json({ success: true, data: config, message: 'Tạo OA Hệ thống thành công' });
+    const message = config.connectionWarning
+      ? `Thêm OA Hệ thống thành công! (Lưu ý: Chưa thể đồng bộ ngay từ FPT do IP mạng chưa mở Whitelist: ${config.connectionWarning})`
+      : 'Tạo OA Hệ thống thành công';
+    res.status(201).json({ success: true, data: config, message });
   } catch (error) { next(error); }
 }
 
@@ -147,8 +150,16 @@ async function createOAConfig(req, res, next) {
     if (!userId || !oaName || !fptAppId || !fptSecretKey) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin' });
     }
-    const config = await oaConfigService.createOAConfig({ userId, oaName, fptAppId, fptSecretKey });
-    res.status(201).json({ success: true, data: config });
+    const config = await oaConfigService.createOAConfig({
+      userId,
+      oaName: oaName.trim(),
+      fptAppId: fptAppId.trim(),
+      fptSecretKey: fptSecretKey.trim(),
+    });
+    const message = config.connectionWarning
+      ? `Tạo cấu hình OA thành công! (Lưu ý: ${config.connectionWarning})`
+      : 'Tạo cấu hình OA thành công';
+    res.status(201).json({ success: true, data: config, message });
   } catch (error) { next(error); }
 }
 
@@ -286,7 +297,10 @@ async function createCustomerPrivateOA(req, res, next) {
       fptAppId: fptAppId.trim(),
       fptSecretKey: fptSecretKey.trim(),
     });
-    res.status(201).json({ success: true, data: oa, message: 'Thêm OA riêng cho khách hàng thành công' });
+    const message = oa.connectionWarning
+      ? `Thêm OA riêng cho khách hàng thành công! (Lưu ý: ${oa.connectionWarning})`
+      : 'Thêm OA riêng cho khách hàng thành công';
+    res.status(201).json({ success: true, data: oa, message });
   } catch (error) { next(error); }
 }
 
@@ -314,10 +328,50 @@ async function deleteOAConfig(req, res, next) {
   } catch (error) { next(error); }
 }
 
+async function updateOAConfig(req, res, next) {
+  try {
+    const { oaName, fptAppId, fptSecretKey, status } = req.body;
+    const config = await oaConfigService.updateOAConfig(req.params.id, { oaName, fptAppId, fptSecretKey, status });
+    res.json({ success: true, message: 'Cập nhật cấu hình OA thành công', data: config });
+  } catch (error) { next(error); }
+}
+
+/** GET /api/v1/admin/oa-configs/:id/quota */
+async function getOAQuota(req, res, next) {
+  try {
+    const forceRefresh = req.query.refresh === 'true' || req.query.refresh === '1';
+    const quota = await oaConfigService.getOAQuota(req.params.id, forceRefresh);
+    res.json({ success: true, data: quota });
+  } catch (error) { next(error); }
+}
+
+/** GET /api/v1/admin/oa-configs/:oaId/templates/:templateId/ratings */
+async function getTemplateRatings(req, res, next) {
+  try {
+    const { from_time, to_time, page } = req.query;
+    const ratings = await oaConfigService.getTemplateRatings(req.params.oaId, req.params.templateId, {
+      fromTime: from_time,
+      toTime: to_time,
+      page,
+    });
+    res.json({ success: true, data: ratings });
+  } catch (error) { next(error); }
+}
+
+/** GET /api/v1/admin/oa-configs/:oaId/templates/:templateId/detail */
+async function getTemplateDetail(req, res, next) {
+  try {
+    const detail = await oaConfigService.getTemplateLiveDetail(req.params.oaId, req.params.templateId);
+    res.json({ success: true, data: detail });
+  } catch (error) { next(error); }
+}
+
 module.exports = {
   listCustomers, getCustomer, createCustomer, updateStatus, resetPassword, deleteCustomer,
   createCustomerPrivateOA, deleteCustomerPrivateOA, regenerateCustomerOAKey,
-  listOAConfigs, getOAConfig, createOAConfig, syncOAConfig, updateOAStatus, deleteOAConfig,
+  listOAConfigs, getOAConfig, createOAConfig, syncOAConfig, updateOAStatus, deleteOAConfig, updateOAConfig,
+  getOAQuota, getTemplateRatings, getTemplateDetail,
   listSystemOAConfigs, createSystemOAConfig, assignSystemOA, unassignSystemOA,
   listTemplates, listMessages, getMessage, dashboard, getSystemLogs,
 };
+

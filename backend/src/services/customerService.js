@@ -178,7 +178,6 @@ async function getCustomerById(id) {
           status: true,
           isSystem: true,
           syncedAt: true,
-          quotaInfo: true,
           _count: { select: { templates: true, messages: true } },
           apiKeys: {
             where: { userId: id },
@@ -200,7 +199,6 @@ async function getCustomerById(id) {
               status: true,
               isSystem: true,
               syncedAt: true,
-              quotaInfo: true,
               _count: { select: { templates: true, messages: true } },
               apiKeys: {
                 where: { userId: id },

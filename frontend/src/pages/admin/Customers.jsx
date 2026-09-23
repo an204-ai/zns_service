@@ -8,14 +8,16 @@ import {
   CheckCircle, Broadcast, Buildings, Phone,
   EnvelopeSimple, Sparkle, ShieldCheck, Trash, X
 } from '@phosphor-icons/react';
+import Pagination from '../../components/Pagination';
 
 export default function AdminCustomers() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
+  const [showInactiveOnly, setShowInactiveOnly] = useState(false);
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
 
   // Modal 1: Create Customer (All-in-one with OA)
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -51,8 +53,18 @@ export default function AdminCustomers() {
 
   // Fetch customers
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-customers', search, statusFilter, page],
-    queryFn: () => api.get('/admin/customers', { params: { search, status: statusFilter || undefined, page, limit: 15 } }).then(r => r.data),
+    queryKey: ['admin-customers', search, showInactiveOnly, page, limit],
+    queryFn: () =>
+      api
+        .get('/admin/customers', {
+          params: {
+            search: search.trim() || undefined,
+            status: showInactiveOnly ? 'BLOCKED' : undefined,
+            page,
+            limit,
+          },
+        })
+        .then((r) => r.data),
   });
 
   // Fetch system OAs for assignment
@@ -208,396 +220,229 @@ export default function AdminCustomers() {
 
   return (
     <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-header-title">Quản lý khách hàng</h1>
-          <p className="page-header-desc">Quản lý tài khoản doanh nghiệp và thiết lập cấu hình Zalo OA</p>
-        </div>
-        <button
-          className="btn btn-primary"
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
-          onClick={() => setShowCreateModal(true)}
-        >
-          <Plus size={18} weight="bold" /> Thêm khách hàng mới
-        </button>
+      <div className="console-section-header">
+        <h1 className="console-section-title">Danh sách Consumer</h1>
+        <p className="console-section-desc">
+          Quản lý tài khoản doanh nghiệp, liên kết cấu hình Zalo OA và theo dõi giao dịch gửi tin
+        </p>
       </div>
 
-      <div className="card" style={{ maxWidth: '100%', overflow: 'hidden' }}>
-        <div className="toolbar" style={{ padding: 'var(--spacing-md) var(--spacing-lg)' }}>
-          <div className="search-input-wrapper" style={{ maxWidth: '320px' }}>
-            <MagnifyingGlass />
+      <div className="console-toolbar">
+        <div className="console-toolbar-left">
+          <div className="console-search-wrapper">
+            <MagnifyingGlass weight="bold" />
             <input
-              className="search-input"
-              placeholder="Tìm tên, email, công ty..."
+              type="text"
+              className="console-search-input"
+              placeholder="Tìm kiếm..."
               value={search}
-              onChange={e => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
             />
           </div>
-          <select
-            className="filter-select"
-            value={statusFilter}
-            onChange={e => { setStatusFilter(e.target.value); setPage(1); }}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="ACTIVE">Hoạt động</option>
-            <option value="BLOCKED">Đã khoá</option>
-          </select>
         </div>
 
+        <div className="console-toolbar-right">
+          <label className="console-checkbox-label">
+            <input
+              type="checkbox"
+              className="console-checkbox-input"
+              checked={showInactiveOnly}
+              onChange={(e) => {
+                setShowInactiveOnly(e.target.checked);
+                setPage(1);
+              }}
+            />
+            <span>Hiện không hoạt động</span>
+          </label>
+
+          <button
+            type="button"
+            className="console-primary-btn"
+            onClick={() => setShowCreateModal(true)}
+          >
+            <Plus size={16} weight="bold" />
+            <span>Thêm Consumer</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="console-card-table">
         {isLoading ? (
           <div className="loading-overlay"><div className="spinner" /></div>
         ) : (
           <>
             <div className="table-wrapper">
-              <table className="table" style={{ width: '100%', tableLayout: 'fixed' }}>
-                <colgroup>
-                  <col style={{ width: '20%' }} />
-                  <col style={{ width: '22%' }} />
-                  <col style={{ width: '24%' }} />
-                  <col style={{ width: '8%' }} />
-                  <col style={{ width: '10%' }} />
-                  <col style={{ width: '16%' }} />
-                </colgroup>
+              <table className="table">
                 <thead>
                   <tr>
-                    <th>Khách hàng</th>
-                    <th>Liên hệ</th>
-                    <th>OA Zalo liên kết</th>
-                    <th style={{ textAlign: 'center' }}>Tin nhắn</th>
-                    <th style={{ textAlign: 'center' }}>Trạng thái</th>
-                    <th style={{ textAlign: 'center', paddingRight: '14px', paddingLeft: '8px' }}>Thao tác</th>
+                    <th style={{ width: 44, textAlign: 'center' }}>#</th>
+                    <th style={{ width: '24%' }}>Tên consumer <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '15%' }}>Trạng thái <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '22%' }}>Liên hệ <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '17%' }}>Cấu hình OA <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '10%', textAlign: 'center' }}>Tổng Txn <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '12%', textAlign: 'center' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data?.data?.map(c => {
+                  {data?.data?.map((c, idx) => {
                     const hasPrivateOA = c.oaConfigs && c.oaConfigs.length > 0;
                     const hasSystemOA = c.systemOaAssignments && c.systemOaAssignments.length > 0;
                     const hasAnyOA = hasPrivateOA || hasSystemOA;
+                    const rowIndex = (page - 1) * limit + idx + 1;
+
                     return (
                       <tr
                         key={c.id}
                         onClick={() => navigate(`/admin/customers/${c.id}`)}
-                        style={{ cursor: 'pointer', transition: 'background 0.15s ease' }}
-                        onMouseEnter={e => e.currentTarget.style.background = 'rgba(37, 99, 235, 0.04)'}
-                        onMouseLeave={e => e.currentTarget.style.background = ''}
+                        style={{ cursor: 'pointer' }}
                         title="Bấm để xem chi tiết khách hàng"
                       >
-                        {/* Cột 1: Khách hàng */}
-                        <td style={{ minWidth: 0 }}>
-                          <div
-                            style={{
-                              fontWeight: 600,
-                              color: 'var(--text-primary)',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
-                            }}
-                            title={c.fullName}
-                          >
-                            {c.fullName}
+                        <td className="table-col-index">{rowIndex}</td>
+
+                        <td>
+                          <div>
+                            <span
+                              className="table-cell-link"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/admin/customers/${c.id}`);
+                              }}
+                            >
+                              {c.fullName}
+                            </span>
+                            {c.companyName ? (
+                              <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+                                {c.companyName}
+                              </div>
+                            ) : (
+                              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                                Cá nhân
+                              </div>
+                            )}
                           </div>
-                          {c.companyName ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 3, minWidth: 0 }}>
-                              <Buildings size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.companyName}>{c.companyName}</span>
-                            </div>
+                        </td>
+
+                        <td>
+                          {c.status === 'ACTIVE' ? (
+                            <span className="badge-active-pill">Đang hoạt động</span>
                           ) : (
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: 2 }}>
-                              Cá nhân
-                            </div>
+                            <span className="badge-inactive-pill">Đã khoá</span>
                           )}
                         </td>
 
-                        {/* Cột 2: Thông tin liên hệ */}
-                        <td style={{ minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)', minWidth: 0 }}>
-                            <EnvelopeSimple size={14} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={c.email}>{c.email}</span>
+                        <td>
+                          <div style={{ fontSize: 13, color: '#1e293b' }}>
+                            {c.email}
                           </div>
                           {c.phone && (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 3, minWidth: 0 }}>
-                              <Phone size={13} color="var(--text-muted)" style={{ flexShrink: 0 }} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.phone}</span>
+                            <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+                              {c.phone}
                             </div>
                           )}
                         </td>
 
-                        {/* Cột 3: OA Zalo liên kết */}
-                        <td style={{ minWidth: 0 }} onClick={e => e.stopPropagation()}>
+                        <td onClick={(e) => e.stopPropagation()}>
                           {hasAnyOA ? (
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 0 }}>
-                              {/* OA Riêng */}
-                              {c.oaConfigs?.map(oa => (
-                                <div
-                                  key={oa.id}
-                                  role="button"
-                                  tabIndex={0}
-                                  title="Bấm vào để quản lý cấu hình OA"
-                                  onClick={() => {
-                                    setOaTarget(c);
-                                    setOaModalTab('SYSTEM');
-                                    setSelectedSystemOaId('');
-                                    setOaForm({ oaName: `OA ${c.companyName || c.fullName}`, fptAppId: '', fptSecretKey: '' });
-                                  }}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    background: 'var(--bg-body)',
-                                    border: '1px solid var(--border-color)',
-                                    borderRadius: 'var(--border-radius-sm)',
-                                    padding: '5px 8px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                    width: '100%',
-                                    minWidth: 0,
-                                    boxSizing: 'border-box',
-                                  }}
-                                  onMouseEnter={e => {
-                                    e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                    e.currentTarget.style.background = 'rgba(37, 99, 235, 0.04)';
-                                  }}
-                                  onMouseLeave={e => {
-                                    e.currentTarget.style.borderColor = 'var(--border-color)';
-                                    e.currentTarget.style.background = 'var(--bg-body)';
-                                  }}
-                                >
-                                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 6, minWidth: 0, flex: 1 }}>
-                                    <div style={{ fontWeight: 500, fontSize: 'var(--font-size-xs)', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                                      <Broadcast size={13} color="var(--color-primary)" style={{ flexShrink: 0 }} />
-                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={oa.oaName}>{oa.oaName}</span>
-                                    </div>
-                                    <div style={{ color: 'var(--text-muted)', fontSize: '11px', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      App: {oa.fptAppId?.substring(0, 8)}... • {oa._count?.templates || 0} mẫu
-                                    </div>
-                                  </div>
-                                  <span
-                                    className="badge badge-success"
-                                    style={{ fontSize: '10px', padding: '1px 5px', flexShrink: 0, fontWeight: 500 }}
-                                  >
-                                    OA Riêng
-                                  </span>
-                                </div>
-                              ))}
-
-                              {/* OA Hệ thống đã gán */}
-                              {c.systemOaAssignments?.map(assignment => (
-                                <div
-                                  key={assignment.id}
-                                  role="button"
-                                  tabIndex={0}
-                                  title="Bấm vào để quản lý cấu hình OA"
-                                  onClick={() => {
-                                    setOaTarget(c);
-                                    setOaModalTab('SYSTEM');
-                                    setSelectedSystemOaId('');
-                                    setOaForm({ oaName: `OA ${c.companyName || c.fullName}`, fptAppId: '', fptSecretKey: '' });
-                                  }}
-                                  style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'space-between',
-                                    background: 'var(--color-primary-bg)',
-                                    border: '1px solid var(--color-primary-light)',
-                                    borderRadius: 'var(--border-radius-sm)',
-                                    padding: '5px 8px',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.15s ease',
-                                    width: '100%',
-                                    minWidth: 0,
-                                    boxSizing: 'border-box',
-                                  }}
-                                >
-                                  <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', marginRight: 6, minWidth: 0, flex: 1 }}>
-                                    <div style={{ fontWeight: 500, fontSize: 'var(--font-size-xs)', color: 'var(--color-primary)', display: 'flex', alignItems: 'center', gap: 4, minWidth: 0 }}>
-                                      <ShieldCheck size={13} color="var(--color-primary)" weight="fill" style={{ flexShrink: 0 }} />
-                                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={assignment.oaConfig?.oaName}>{assignment.oaConfig?.oaName}</span>
-                                    </div>
-                                    <div style={{ color: 'var(--text-secondary)', fontSize: '11px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                      {assignment.oaConfig?._count?.templates || 0} mẫu tin có sẵn
-                                    </div>
-                                  </div>
-                                  <span
-                                    className="badge badge-primary"
-                                    style={{ fontSize: '10px', padding: '1px 5px', flexShrink: 0, fontWeight: 500 }}
-                                  >
-                                    Hệ thống
-                                  </span>
-                                </div>
-                              ))}
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+                              {hasPrivateOA && (
+                                <span className="badge badge-success" style={{ fontSize: 11, fontWeight: 500 }}>
+                                  OA Riêng ({c.oaConfigs.length})
+                                </span>
+                              )}
+                              {hasSystemOA && (
+                                <span className="badge badge-primary" style={{ fontSize: 11, fontWeight: 500 }}>
+                                  Hệ thống ({c.systemOaAssignments.length})
+                                </span>
+                              )}
                             </div>
                           ) : (
-                            /* Ô tương tác trực tiếp: bấm thẳng vào để gán OA */
-                            <div
-                              role="button"
-                              tabIndex={0}
-                              title="Bấm vào đây để gán OA Hệ thống hoặc tạo OA riêng"
+                            <button
+                              type="button"
+                              className="btn btn-sm btn-secondary"
+                              style={{ fontSize: 11, padding: '2px 8px', height: 24 }}
                               onClick={() => {
                                 setOaTarget(c);
                                 setOaModalTab('SYSTEM');
                                 setSelectedSystemOaId('');
-                                setOaForm({ oaName: `OA ${c.companyName || c.fullName}`, fptAppId: '', fptSecretKey: '' });
-                              }}
-                              style={{
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: 6,
-                                padding: '6px 10px',
-                                border: '1px dashed #cbd5e1',
-                                background: 'rgba(241, 245, 249, 0.6)',
-                                borderRadius: 'var(--border-radius-sm)',
-                                color: 'var(--text-secondary)',
-                                cursor: 'pointer',
-                                fontSize: 'var(--font-size-xs)',
-                                fontWeight: 500,
-                                transition: 'all 0.15s ease',
-                                width: '100%',
-                                maxWidth: '160px',
-                                boxSizing: 'border-box',
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.background = 'rgba(37, 99, 235, 0.08)';
-                                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                e.currentTarget.style.color = 'var(--color-primary)';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.background = 'rgba(241, 245, 249, 0.6)';
-                                e.currentTarget.style.borderColor = '#cbd5e1';
-                                e.currentTarget.style.color = 'var(--text-secondary)';
+                                setOaForm({
+                                  oaName: `OA ${c.companyName || c.fullName}`,
+                                  fptAppId: '',
+                                  fptSecretKey: '',
+                                });
                               }}
                             >
-                              <Plus size={14} style={{ flexShrink: 0 }} />
-                              <span>Bấm để gán OA</span>
-                            </div>
+                              + Gán OA
+                            </button>
                           )}
                         </td>
 
-                        {/* Cột 4: Số lượng tin nhắn */}
-                        <td style={{ textAlign: 'center', fontWeight: 500, color: 'var(--text-primary)' }}>
-                          {c._count?.messages || 0}
+                        <td style={{ textAlign: 'right', fontFamily: 'monospace', fontSize: 13, fontWeight: 500, color: '#0f172a' }}>
+                          {c._count?.messages ? c._count.messages.toLocaleString('en-US') : '-'}
                         </td>
 
-                        {/* Cột 5: Trạng thái tài khoản */}
-                        <td style={{ textAlign: 'center' }}>
-                          <span className={`badge ${c.status === 'ACTIVE' ? 'badge-success' : 'badge-danger'}`} style={{ fontWeight: 500 }}>
-                            {c.status === 'ACTIVE' ? 'Hoạt động' : 'Đã khoá'}
-                          </span>
-                        </td>
-
-                        {/* Cột 6: Thao tác (3 nút icon: Đặt lại mật khẩu, Khóa/Mở khóa, Xóa) */}
-                        <td style={{ textAlign: 'center', paddingRight: '14px', paddingLeft: '8px' }} onClick={e => e.stopPropagation()}>
-                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5, flexShrink: 0 }}>
+                        <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}>
                             <button
                               type="button"
+                              className="btn btn-sm btn-secondary"
                               title="Đặt lại mật khẩu"
-                              onClick={() => { setResetTarget(c); setNewPassword(''); }}
-                              style={{
-                                width: 28,
-                                height: 28,
-                                flexShrink: 0,
-                                borderRadius: 'var(--border-radius-sm)',
-                                border: '1px solid var(--border-color)',
-                                background: 'var(--bg-card)',
-                                color: 'var(--text-secondary)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.color = 'var(--color-primary)';
-                                e.currentTarget.style.borderColor = 'var(--color-primary)';
-                                e.currentTarget.style.background = 'rgba(37, 99, 235, 0.08)';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.color = 'var(--text-secondary)';
-                                e.currentTarget.style.borderColor = 'var(--border-color)';
-                                e.currentTarget.style.background = 'var(--bg-card)';
+                              style={{ padding: '4px 7px', height: 26 }}
+                              onClick={() => {
+                                setResetTarget(c);
+                                setNewPassword('');
                               }}
                             >
-                              <Key size={14} />
+                              <Key size={13} />
                             </button>
+
                             <button
                               type="button"
-                              title={c.status === 'ACTIVE' ? 'Khoá tài khoản này' : 'Mở khoá tài khoản'}
-                              onClick={() => statusMutation.mutate({ id: c.id, status: c.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE' })}
+                              className={`btn btn-sm ${c.status === 'ACTIVE' ? 'btn-secondary' : 'btn-success'}`}
+                              title={c.status === 'ACTIVE' ? 'Khoá tài khoản' : 'Mở khoá tài khoản'}
                               style={{
-                                width: 28,
-                                height: 28,
-                                flexShrink: 0,
-                                borderRadius: 'var(--border-radius-sm)',
-                                border: '1px solid',
-                                borderColor: c.status === 'ACTIVE' ? 'rgba(217, 119, 6, 0.3)' : 'rgba(16, 185, 129, 0.3)',
-                                background: c.status === 'ACTIVE' ? 'rgba(217, 119, 6, 0.08)' : 'rgba(16, 185, 129, 0.08)',
-                                color: c.status === 'ACTIVE' ? 'var(--color-warning)' : 'var(--color-success)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
+                                padding: '4px 7px',
+                                height: 26,
+                                color: c.status === 'ACTIVE' ? '#b45309' : '#047857',
+                                borderColor: c.status === 'ACTIVE' ? '#fde68a' : '#a7f3d0',
+                                background: c.status === 'ACTIVE' ? '#fffbeb' : '#ecfdf5',
                               }}
-                              onMouseEnter={e => {
-                                if (c.status === 'ACTIVE') {
-                                  e.currentTarget.style.background = 'var(--color-warning)';
-                                  e.currentTarget.style.color = '#fff';
-                                  e.currentTarget.style.borderColor = 'var(--color-warning)';
-                                } else {
-                                  e.currentTarget.style.background = 'var(--color-success)';
-                                  e.currentTarget.style.color = '#fff';
-                                  e.currentTarget.style.borderColor = 'var(--color-success)';
-                                }
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.background = c.status === 'ACTIVE' ? 'rgba(217, 119, 6, 0.08)' : 'rgba(16, 185, 129, 0.08)';
-                                e.currentTarget.style.color = c.status === 'ACTIVE' ? 'var(--color-warning)' : 'var(--color-success)';
-                                e.currentTarget.style.borderColor = c.status === 'ACTIVE' ? 'rgba(217, 119, 6, 0.3)' : 'rgba(16, 185, 129, 0.3)';
-                              }}
+                              onClick={() =>
+                                statusMutation.mutate({
+                                  id: c.id,
+                                  status: c.status === 'ACTIVE' ? 'BLOCKED' : 'ACTIVE',
+                                })
+                              }
                             >
-                              {c.status === 'ACTIVE' ? <Lock size={14} /> : <LockOpen size={14} />}
+                              {c.status === 'ACTIVE' ? <Lock size={13} /> : <LockOpen size={13} />}
                             </button>
+
                             <button
                               type="button"
+                              className="btn btn-sm btn-danger"
                               title="Xóa khách hàng"
+                              style={{ padding: '4px 7px', height: 26 }}
                               onClick={() => setDeleteTarget(c)}
-                              style={{
-                                width: 28,
-                                height: 28,
-                                flexShrink: 0,
-                                borderRadius: 'var(--border-radius-sm)',
-                                border: '1px solid rgba(220, 38, 38, 0.25)',
-                                background: 'rgba(220, 38, 38, 0.08)',
-                                color: 'var(--color-danger)',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.15s ease',
-                              }}
-                              onMouseEnter={e => {
-                                e.currentTarget.style.background = 'var(--color-danger)';
-                                e.currentTarget.style.color = '#fff';
-                                e.currentTarget.style.borderColor = 'var(--color-danger)';
-                              }}
-                              onMouseLeave={e => {
-                                e.currentTarget.style.background = 'rgba(220, 38, 38, 0.08)';
-                                e.currentTarget.style.color = 'var(--color-danger)';
-                                e.currentTarget.style.borderColor = 'rgba(220, 38, 38, 0.25)';
-                              }}
                             >
-                              <Trash size={14} />
+                              <Trash size={13} />
                             </button>
                           </div>
                         </td>
                       </tr>
                     );
                   })}
+
                   {!data?.data?.length && (
                     <tr>
-                      <td colSpan={6} className="empty-state">
-                        <div className="empty-state-title" style={{ fontWeight: 600 }}>Chưa có khách hàng nào</div>
-                        <p style={{ color: 'var(--text-muted)', fontSize: 'var(--font-size-sm)' }}>
-                          Bấm nút "Thêm khách hàng mới" để tạo tài khoản và thiết lập cấu hình Zalo OA.
+                      <td colSpan={7} className="empty-state" style={{ padding: '36px 20px', textAlign: 'center' }}>
+                        <div className="empty-state-title" style={{ fontSize: 14, fontWeight: 500, color: '#334155' }}>
+                          Chưa có khách hàng nào
+                        </div>
+                        <p style={{ color: '#64748b', fontSize: 12.5, marginTop: 4 }}>
+                          Bấm nút "Thêm Consumer" để tạo tài khoản mới.
                         </p>
                       </td>
                     </tr>
@@ -605,16 +450,17 @@ export default function AdminCustomers() {
                 </tbody>
               </table>
             </div>
-
-            {data?.totalPages > 1 && (
-              <div className="pagination">
-                <div className="pagination-info">Trang {page} trên {data.totalPages} ({data.total} khách hàng)</div>
-                <div className="pagination-controls">
-                  <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Trước</button>
-                  <button className="pagination-btn" disabled={page >= data.totalPages} onClick={() => setPage(p => p + 1)}>Sau</button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={page}
+              totalPages={data?.totalPages || 1}
+              pageSize={limit}
+              totalItems={data?.total}
+              onPageChange={setPage}
+              onPageSizeChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
           </>
         )}
       </div>

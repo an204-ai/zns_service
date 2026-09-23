@@ -4,7 +4,7 @@ const { redis } = require('../config/redis');
 
 const fptClient = axios.create({
   baseURL: env.FPT_ZBS_BASE_URL,
-  timeout: 30000,
+  timeout: 5000,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -38,14 +38,34 @@ async function getOAInfo(appId, secretKey) {
   const cached = await redis.get(cacheKey);
   if (cached) return JSON.parse(cached);
 
-  const response = await fptClient.get('/open-api/api/official-accounts', {
-    headers: {
-      'app-id': appId,
-      'secret-key': secretKey,
-    },
-  });
+  let response;
+  try {
+    response = await fptClient.get('/open-api/api/official-accounts', {
+      headers: {
+        'app-id': appId,
+        'secret-key': secretKey,
+      },
+    });
+  } catch (err) {
+    const detail = err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ FPT';
+    const error = new Error(`Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
 
-  if (response.data.status === 1) {
+  if (!response.data) {
+    const error = new Error('Máy chủ FPT không phản hồi thông tin OA');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (response.data.status !== 1) {
+    const error = new Error(response.data.message || 'App ID hoặc Secret Key không hợp lệ');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (response.data.data) {
     await redis.set(cacheKey, JSON.stringify(response.data.data), 'EX', 3600);
   }
 
@@ -56,12 +76,32 @@ async function getOAInfo(appId, secretKey) {
  * Get list of ZNS templates from FPT
  */
 async function getTemplates(appId, secretKey, page = 1) {
-  const response = await fptClient.get(`/open-api/api/zns-templates?page=${page}`, {
-    headers: {
-      'app-id': appId,
-      'secret-key': secretKey,
-    },
-  });
+  let response;
+  try {
+    response = await fptClient.get(`/open-api/api/zns-templates?page=${page}`, {
+      headers: {
+        'app-id': appId,
+        'secret-key': secretKey,
+      },
+    });
+  } catch (err) {
+    const detail = err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ FPT';
+    const error = new Error(`Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (!response.data) {
+    const error = new Error('Máy chủ FPT không phản hồi danh sách mẫu tin');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (response.data.status !== 1) {
+    const error = new Error(response.data.message || 'FPT trả về lỗi khi lấy danh sách mẫu tin');
+    error.statusCode = 400;
+    throw error;
+  }
 
   return response.data;
 }
@@ -70,63 +110,133 @@ async function getTemplates(appId, secretKey, page = 1) {
  * Get template detail from FPT
  */
 async function getTemplateDetail(appId, secretKey, templateId) {
-  const response = await fptClient.get(`/open-api/api/zns-templates/${templateId}`, {
-    headers: {
-      'app-id': appId,
-      'secret-key': secretKey,
-    },
-  });
+  let response;
+  try {
+    response = await fptClient.get(`/open-api/api/zns-templates/${templateId}`, {
+      headers: {
+        'app-id': appId,
+        'secret-key': secretKey,
+      },
+    });
+  } catch (err) {
+    const detail = err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ FPT';
+    const error = new Error(`Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (!response.data) {
+    const error = new Error('Máy chủ FPT không phản hồi chi tiết mẫu tin');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (response.data.status !== 1) {
+    const error = new Error(response.data.message || `FPT trả về lỗi khi lấy thông tin mẫu tin #${templateId}`);
+    error.statusCode = 400;
+    throw error;
+  }
 
   return response.data;
 }
 
 /**
- * Get OA quota from FPT
+ * Get ZNS sending quota from FPT (strictly real data, no mock fallback)
  */
-async function getQuota(appId, secretKey) {
+async function getQuota(appId, secretKey, forceRefresh = false) {
   const cacheKey = `fpt:quota:${appId}`;
-  const cached = await redis.get(cacheKey);
-  if (cached) return JSON.parse(cached);
-
-  const response = await fptClient.get('/open-api/api/official-accounts/quota', {
-    headers: {
-      'app-id': appId,
-      'secret-key': secretKey,
-    },
-  });
-
-  if (response.data.status === 1) {
-    // Cache for 5 minutes
-    await redis.set(cacheKey, JSON.stringify(response.data.data), 'EX', 300);
+  if (!forceRefresh) {
+    const cached = await redis.get(cacheKey);
+    if (cached) return JSON.parse(cached);
   }
 
+  let response;
+  try {
+    response = await fptClient.get('/open-api/api/official-accounts/quota', {
+      headers: {
+        'app-id': appId,
+        'secret-key': secretKey,
+      },
+    });
+  } catch (err) {
+    const detail = err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ FPT';
+    const error = new Error(`Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (!response.data) {
+    const error = new Error('Máy chủ FPT không trả về kết quả hạn mức');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (response.data.status !== 1) {
+    const error = new Error(response.data.message || 'FPT trả về lỗi khi tra cứu hạn mức gửi tin');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  if (!response.data.data) {
+    const error = new Error('Dữ liệu hạn mức từ FPT bị trống');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Cache valid quota data for 5 minutes
+  await redis.set(cacheKey, JSON.stringify(response.data.data), 'EX', 300);
   return response.data.data;
 }
 
 /**
  * Get customer ratings from FPT
  */
-async function getRatings(appId, secretKey, { templateId, fromTime, toTime, page }) {
-  const response = await fptClient.post('/open-api/api/official-accounts/rating', {
-    template_id: templateId,
-    from_time: fromTime,
-    to_time: toTime,
-    page,
-  }, {
-    headers: {
-      'app-id': appId,
-      'secret-key': secretKey,
-    },
-  });
+async function getRatings(appId, secretKey, { templateId, fromTime, toTime, page = 1 }) {
+  const cacheKey = `fpt:rating:${appId}:${templateId}:${fromTime}:${toTime}:${page}`;
+  const cached = await redis.get(cacheKey);
+  if (cached) return JSON.parse(cached);
 
+  let response;
+  try {
+    response = await fptClient.post('/open-api/api/official-accounts/rating', {
+      template_id: Number(templateId),
+      from_time: fromTime,
+      to_time: toTime,
+      page: Number(page) || 1,
+    }, {
+      headers: {
+        'app-id': appId,
+        'secret-key': secretKey,
+      },
+    });
+  } catch (err) {
+    const detail = err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ FPT';
+    const error = new Error(`Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (!response.data) {
+    const error = new Error('Máy chủ FPT không phản hồi dữ liệu đánh giá');
+    error.statusCode = 502;
+    throw error;
+  }
+
+  if (response.data.status !== 1) {
+    const error = new Error(response.data.message || 'FPT trả về lỗi khi tra cứu đánh giá mẫu tin');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  await redis.set(cacheKey, JSON.stringify(response.data), 'EX', 120); // 2 minutes cache
   return response.data;
 }
 
 module.exports = {
   sendMessage,
   getOAInfo,
+  getQuota,
   getTemplates,
   getTemplateDetail,
-  getQuota,
   getRatings,
 };

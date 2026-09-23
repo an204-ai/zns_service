@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
+import Pagination from '../../components/Pagination';
+import TemplateDetailModal from '../../components/TemplateDetailModal';
+import { CaretRight } from '@phosphor-icons/react';
 
 export default function AdminTemplates() {
   const [oaFilter, setOaFilter] = useState('');
   const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   const { data: oaConfigs } = useQuery({
     queryKey: ['admin-oa-configs-select'],
@@ -12,56 +17,139 @@ export default function AdminTemplates() {
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-templates', oaFilter, page],
-    queryFn: () => api.get('/admin/templates', { params: { oaConfigId: oaFilter || undefined, page, limit: 20 } }).then(r => r.data),
+    queryKey: ['admin-templates', oaFilter, page, limit],
+    queryFn: () => api.get('/admin/templates', { params: { oaConfigId: oaFilter || undefined, page, limit } }).then(r => r.data),
   });
 
   return (
-    <div>
-      <div className="page-header">
-        <h1 className="page-header-title">Mẫu tin nhắn</h1>
-        <p className="page-header-desc">Danh sách mẫu tin ZNS đã duyệt và đồng bộ từ Zalo</p>
+    <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
+      <div className="console-section-header">
+        <h1 className="console-section-title">Mẫu tin nhắn</h1>
+        <p className="console-section-desc">Danh sách mẫu tin ZNS đã duyệt và đồng bộ từ Zalo</p>
       </div>
 
-      <div className="card">
-        <div className="toolbar" style={{ padding: 'var(--spacing-md) var(--spacing-lg)' }}>
-          <select className="filter-select" value={oaFilter} onChange={e => { setOaFilter(e.target.value); setPage(1); }}>
-            <option value="">Tất cả OA</option>
+      <div className="console-toolbar">
+        <div className="console-toolbar-left">
+          <select
+            className="filter-select"
+            style={{ height: 36, padding: '0 12px', fontSize: 13, borderRadius: 6, border: '1px solid #e2e8f0', background: '#ffffff', color: '#0f172a' }}
+            value={oaFilter}
+            onChange={e => { setOaFilter(e.target.value); setPage(1); }}
+          >
+            <option value="">Tất cả Zalo OA</option>
             {oaConfigs?.map(oa => <option key={oa.id} value={oa.id}>{oa.oaName}</option>)}
           </select>
         </div>
-        {isLoading ? <div className="loading-overlay"><div className="spinner" /></div> : (
+      </div>
+
+      <div className="console-card-table">
+        {isLoading ? (
+          <div className="loading-overlay"><div className="spinner" /></div>
+        ) : (
           <>
             <div className="table-wrapper">
               <table className="table">
-                <thead><tr><th>Template ID</th><th>Tên mẫu tin</th><th>OA</th><th>Loại</th><th>Chất lượng</th><th>Trạng thái</th></tr></thead>
+                <thead>
+                  <tr>
+                    <th style={{ width: 44, textAlign: 'center' }}>#</th>
+                    <th style={{ width: '15%', textAlign: 'left' }}>Mã mẫu tin</th>
+                    <th style={{ width: '22%', textAlign: 'left' }}>Tên mẫu tin</th>
+                    <th style={{ width: '18%', textAlign: 'left' }}>Zalo OA</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>Phân loại</th>
+                    <th style={{ width: '10%', textAlign: 'center' }}>Chất lượng</th>
+                    <th style={{ width: '10%', textAlign: 'center' }}>Trạng thái</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>Thao tác</th>
+                  </tr>
+                </thead>
                 <tbody>
-                  {data?.data?.map(t => (
-                    <tr key={t.id}>
-                      <td style={{ fontFamily: 'monospace' }}>{t.templateId}</td>
+                  {data?.data?.map((t, idx) => (
+                    <tr
+                      key={t.id}
+                      className="clickable-row"
+                      onClick={() => setSelectedTemplate(t)}
+                    >
+                      <td className="table-col-index">{(page - 1) * limit + idx + 1}</td>
+                      <td style={{ fontFamily: 'monospace', color: '#2563eb', fontWeight: 600 }}>
+                        {t.templateId}
+                      </td>
                       <td className="table-cell-bold">{t.templateName}</td>
-                      <td>{t.fptOaConfig?.oaName}</td>
-                      <td><span className="badge badge-neutral">{t.templateTag || '—'}</span></td>
-                      <td><span className={`badge ${t.templateQuality === 'HIGH' ? 'badge-success' : t.templateQuality === 'LOW' ? 'badge-danger' : 'badge-warning'}`}>{t.templateQuality || 'N/A'}</span></td>
-                      <td><span className={`badge ${t.status === 'ENABLE' ? 'badge-success' : t.status === 'PENDING' ? 'badge-warning' : 'badge-danger'}`}>{t.status === 'ENABLE' ? 'Kích hoạt' : t.status === 'PENDING' ? 'Chờ duyệt' : 'Bị khoá'}</span></td>
+                      <td style={{ fontSize: 12.5, color: '#475569' }}>{t.fptOaConfig?.oaName}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="badge badge-neutral" style={{ fontSize: 11 }}>
+                          {t.templateTag || 'Chăm sóc khách hàng'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className={`badge ${t.templateQuality === 'HIGH' ? 'badge-success' : t.templateQuality === 'LOW' ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: 11 }}>
+                          {t.templateQuality === 'HIGH' ? 'Tốt' : t.templateQuality === 'LOW' ? 'Kém' : 'Trung bình'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {t.status === 'ENABLE' ? (
+                          <span className="badge-active-pill">Kích hoạt</span>
+                        ) : t.status === 'PENDING' ? (
+                          <span className="badge badge-warning" style={{ fontSize: 11 }}>Chờ duyệt</span>
+                        ) : (
+                          <span className="badge-inactive-pill">Đã khoá</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-secondary"
+                          style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTemplate(t);
+                          }}
+                        >
+                          Chi tiết
+                          <CaretRight size={13} weight="bold" />
+                        </button>
+                      </td>
                     </tr>
                   ))}
-                  {!data?.data?.length && <tr><td colSpan={6} className="empty-state"><div className="empty-state-title">Chưa có mẫu tin</div></td></tr>}
+                  {!data?.data?.length && (
+                    <tr>
+                      <td colSpan={8} className="empty-state" style={{ padding: '36px 20px', textAlign: 'center' }}>
+                        <div className="empty-state-title" style={{ fontSize: 14, fontWeight: 500, color: '#334155' }}>
+                          Chưa có mẫu tin nào
+                        </div>
+                        <p style={{ color: '#64748b', fontSize: 12.5, marginTop: 4 }}>
+                          Chọn OA khác hoặc đồng bộ mẫu tin từ cấu hình OA
+                        </p>
+                      </td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>
-            {data?.totalPages > 1 && (
-              <div className="pagination">
-                <div className="pagination-info">Trang {page} trên {data.totalPages} ({data.total} mẫu tin)</div>
-                <div className="pagination-controls">
-                  <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Trước</button>
-                  <button className="pagination-btn" disabled={page >= data.totalPages} onClick={() => setPage(p => p + 1)}>Sau</button>
-                </div>
-              </div>
-            )}
+
+            <Pagination
+              currentPage={page}
+              totalPages={data?.totalPages || 1}
+              pageSize={limit}
+              totalItems={data?.total}
+              onPageChange={setPage}
+              onPageSizeChange={(newLimit) => {
+                setLimit(newLimit);
+                setPage(1);
+              }}
+            />
           </>
         )}
       </div>
+
+      {/* Template Detail Modal */}
+      {selectedTemplate && (
+        <TemplateDetailModal
+          isOpen={!!selectedTemplate}
+          onClose={() => setSelectedTemplate(null)}
+          templateId={selectedTemplate.templateId}
+          oaId={selectedTemplate.fptOaConfigId || selectedTemplate.fptOaConfig?.id}
+          isAdmin={true}
+        />
+      )}
     </div>
   );
 }

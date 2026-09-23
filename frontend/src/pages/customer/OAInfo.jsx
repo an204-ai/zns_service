@@ -1,51 +1,68 @@
 import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import api from '../../services/api';
 import { useToast } from '../../hooks/useToast';
 import {
   Key,
-  ArrowsClockwise,
   CopySimple,
   Check,
-  Code,
-  CheckCircle,
-  WarningCircle,
-  X,
-  Broadcast,
-  ShieldCheck,
-  Sparkle
+  Eye,
+  EyeSlash,
+  CaretRight,
+  ArrowLeft,
+  MagnifyingGlass,
+  Gauge,
+  ArrowsClockwise,
+  WarningCircle
 } from '@phosphor-icons/react';
+import Pagination from '../../components/Pagination';
+import TemplateDetailModal from '../../components/TemplateDetailModal';
 
 export default function CustomerOAInfo() {
-  const queryClient = useQueryClient();
   const toast = useToast();
-  const [newlyRegeneratedKey, setNewlyRegeneratedKey] = useState(null);
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [showGuideOaId, setShowGuideOaId] = useState(null);
 
-  const { data: oaConfigs, isLoading, refetch } = useQuery({
+  const [selectedOaId, setSelectedOaId] = useState(null);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [showKeyVisible, setShowKeyVisible] = useState(false);
+  const [copiedKeyOaId, setCopiedKeyOaId] = useState(null);
+  const [copiedDetailKey, setCopiedDetailKey] = useState(false);
+
+  const { data: oaConfigs, isLoading } = useQuery({
     queryKey: ['customer-oa-configs'],
-    queryFn: () => api.get('/customer/oa-configs').then(r => r.data.data),
+    queryFn: () => api.get('/customer/oa-configs').then((r) => r.data.data),
   });
 
-  const regenerateMutation = useMutation({
-    mutationFn: (oaId) => api.post(`/customer/oa-configs/${oaId}/regenerate-key`),
-    onSuccess: (r) => {
-      refetch();
-      setNewlyRegeneratedKey(r.data.data);
-      toast.success('Đã cấp lại API Key ngẫu nhiên mới cho OA này');
-    },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi cấp lại API Key');
-    },
+  const selectedOa = oaConfigs?.find((o) => o.id === selectedOaId);
+
+  // Quota for selected OA
+  const {
+    data: oaQuota,
+    isLoading: isQuotaLoading,
+    isError: isQuotaError,
+    error: quotaError,
+    refetch: refetchQuota
+  } = useQuery({
+    queryKey: ['customer-oa-quota', selectedOa?.id],
+    queryFn: () => api.get(`/customer/oa-configs/${selectedOa.id}/quota`).then((r) => r.data.data),
+    enabled: !!selectedOa?.id,
+    retry: 1,
   });
 
-  const handleCopyNewKey = () => {
-    if (!newlyRegeneratedKey?.apiKey) return;
-    navigator.clipboard.writeText(newlyRegeneratedKey.apiKey);
-    setCopiedKey(true);
-    toast.success('Đã sao chép API Key vào bộ nhớ tạm');
-    setTimeout(() => setCopiedKey(false), 2000);
+  const handleCopyText = (text, type = 'key', oaId = null) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    if (type === 'row-key') {
+      setCopiedKeyOaId(oaId);
+      setTimeout(() => setCopiedKeyOaId(null), 2000);
+      toast.success('Đã sao chép API Key');
+    } else if (type === 'detail-key') {
+      setCopiedDetailKey(true);
+      setTimeout(() => setCopiedDetailKey(false), 2000);
+      toast.success('Đã sao chép API Key');
+    }
   };
 
   if (isLoading) {
@@ -56,410 +73,620 @@ export default function CustomerOAInfo() {
     );
   }
 
+  if (selectedOa) {
+    const rawApiKey = selectedOa.apiKey?.apiKey || selectedOa.apiKey?.prefix || '';
+    const maskedApiKey = `${selectedOa.apiKey?.prefix || 'YOUR_API_KEY'}••••••••••••••••••••••••••••••••`;
+
+    return (
+      <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
+        {/* Navigation & Header */}
+        <div style={{ marginBottom: 'var(--spacing-md)' }}>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              marginBottom: 12,
+              fontWeight: 500,
+              fontSize: 13,
+            }}
+            onClick={() => {
+              setSelectedOaId(null);
+              setShowKeyVisible(false);
+            }}
+          >
+            <ArrowLeft size={15} weight="bold" />
+            Quay lại danh sách OA
+          </button>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: 12,
+            }}
+          >
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+                <h1 className="page-header-title" style={{ margin: 0, fontSize: 20 }}>
+                  {selectedOa.oaName}
+                </h1>
+                {selectedOa.isSystem ? (
+                  <span className="badge badge-primary">OA Hệ thống</span>
+                ) : (
+                  <span className="badge badge-success">OA Riêng</span>
+                )}
+                <span className="badge-active-pill">Đang hoạt động</span>
+              </div>
+              <div style={{ fontSize: 13, color: '#64748b', marginTop: 4 }}>
+                Mã định danh OA: <strong style={{ color: '#0f172a' }}>{selectedOa.oaId || 'Chưa cập nhật'}</strong>
+                <span style={{ margin: '0 8px', color: '#cbd5e1' }}>•</span>
+                <span style={{ color: '#0284c7', fontWeight: 600 }}>{selectedOa.templates?.length || 0}</span> mẫu tin ZNS sẵn sàng
+                {oaQuota?.dailyQuota ? (
+                  <>
+                    <span style={{ margin: '0 8px', color: '#cbd5e1' }}>•</span>
+                    <span>Hạn mức hôm nay: </span>
+                    <strong style={{ color: '#059669' }}>
+                      {oaQuota.remainingQuota?.toLocaleString('vi-VN')} / {oaQuota.dailyQuota?.toLocaleString('vi-VN')} tin
+                    </strong>
+                  </>
+                ) : isQuotaError ? (
+                  <>
+                    <span style={{ margin: '0 8px', color: '#cbd5e1' }}>•</span>
+                    <span style={{ color: '#dc2626', fontSize: 12, fontWeight: 500 }}>
+                      Không thể lấy hạn mức FPT
+                    </span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Thanh Khóa bảo mật API Key gọn gàng (1 hàng) */}
+        <div
+          className="card"
+          style={{
+            marginBottom: 'var(--spacing-md)',
+            padding: '12px 16px',
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            borderRadius: 8,
+            boxShadow: 'none',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 240, flex: '1 1 auto' }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
+                  background: '#f1f5f9',
+                  color: '#475569',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                <Key size={18} weight="bold" />
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Khóa bảo mật API Key</span>
+                  <span style={{ fontSize: 11, color: '#64748b' }}>(Dùng cho HTTP API gửi tin ZNS)</span>
+                </div>
+                <div
+                  style={{
+                    fontFamily: 'monospace',
+                    fontSize: 12,
+                    color: '#334155',
+                    background: '#f8fafc',
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    border: '1px solid #e2e8f0',
+                    display: 'inline-block',
+                    marginTop: 3,
+                    maxWidth: '100%',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {showKeyVisible ? rawApiKey || 'Chưa cấp API Key' : maskedApiKey}
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ height: 32, padding: '0 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                onClick={() => setShowKeyVisible(!showKeyVisible)}
+                title={showKeyVisible ? 'Ẩn API Key' : 'Hiện API Key'}
+              >
+                {showKeyVisible ? <EyeSlash size={14} /> : <Eye size={14} />}
+                {showKeyVisible ? 'Ẩn' : 'Hiện'}
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ height: 32, padding: '0 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                onClick={() => handleCopyText(rawApiKey, 'detail-key')}
+                disabled={!rawApiKey}
+                title="Sao chép toàn bộ API Key"
+              >
+                {copiedDetailKey ? <Check size={14} color="#059669" /> : <CopySimple size={14} />}
+                {copiedDetailKey ? 'Đã chép' : 'Sao chép'}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Thẻ hạn mức gửi tin ZNS */}
+        <div
+          className="card"
+          style={{
+            marginBottom: 'var(--spacing-md)',
+            padding: '14px 18px',
+            background: '#ffffff',
+            border: isQuotaError ? '1px solid #fecaca' : '1px solid #e2e8f0',
+            borderRadius: 8,
+            boxShadow: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10, marginBottom: isQuotaError ? 0 : 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 6,
+                  background: isQuotaError ? '#fef2f2' : '#f0f9ff',
+                  color: isQuotaError ? '#dc2626' : '#0284c7',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  flexShrink: 0,
+                }}
+              >
+                {isQuotaError ? <WarningCircle size={18} weight="bold" /> : <Gauge size={18} weight="bold" />}
+              </div>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>
+                  Hạn mức gửi tin ZNS hôm nay
+                </span>
+                <span style={{ fontSize: 11.5, color: '#64748b', marginLeft: 8 }}>
+                  (Cập nhật từ FPT Telecom)
+                </span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {!isQuotaError && oaQuota && (
+                <span
+                  style={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: '#059669',
+                    background: '#ecfdf5',
+                    padding: '3px 10px',
+                    borderRadius: 6,
+                    border: '1px solid #d1fae5',
+                  }}
+                >
+                  Còn {oaQuota.remainingQuota?.toLocaleString('vi-VN') || 0} / {oaQuota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
+                </span>
+              )}
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ height: 28, padding: '0 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                onClick={() => refetchQuota()}
+                disabled={isQuotaLoading}
+                title="Làm mới hạn mức"
+              >
+                <ArrowsClockwise size={12} className={isQuotaLoading ? 'spin' : ''} />
+                Làm mới
+              </button>
+            </div>
+          </div>
+
+          {isQuotaLoading ? (
+            <div style={{ padding: '8px 0', fontSize: 12, color: '#64748b' }}>Đang kiểm tra hạn mức từ máy chủ FPT...</div>
+          ) : isQuotaError ? (
+            <div
+              style={{
+                marginTop: 10,
+                padding: '10px 14px',
+                background: '#fef2f2',
+                borderRadius: 6,
+                fontSize: 12.5,
+                color: '#b91c1c',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
+              }}
+            >
+              <span>
+                <strong>Không thể lấy hạn mức từ FPT:</strong>{' '}
+                {quotaError?.response?.data?.message || quotaError?.message || 'Lỗi kết nối máy chủ FPT ZBS'}
+              </span>
+            </div>
+          ) : oaQuota ? (
+            <>
+              {/* Progress bar */}
+              <div style={{ background: '#f1f5f9', borderRadius: 4, height: 6, overflow: 'hidden', marginBottom: 6 }}>
+                <div
+                  style={{
+                    background: '#0284c7',
+                    height: '100%',
+                    width: `${oaQuota.dailyQuota ? Math.min(100, Math.round((oaQuota.remainingQuota / oaQuota.dailyQuota) * 100)) : 0}%`,
+                    borderRadius: 4,
+                    transition: 'width 0.3s ease',
+                  }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11.5, color: '#64748b', flexWrap: 'wrap', gap: 6 }}>
+                <span>
+                  Đã sử dụng {oaQuota.dailyQuota ? (oaQuota.dailyQuota - oaQuota.remainingQuota).toLocaleString('vi-VN') : 0} tin trong ngày
+                </span>
+                {oaQuota.remainingMonthlyPromotionQuota !== undefined && (
+                  <span>
+                    Hạn mức tin hậu mãi (Promotion): Còn{' '}
+                    <strong style={{ color: '#0f172a' }}>
+                      {oaQuota.remainingMonthlyPromotionQuota?.toLocaleString('vi-VN')} tin
+                    </strong>
+                  </span>
+                )}
+              </div>
+            </>
+          ) : (
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 6 }}>
+              Chưa có dữ liệu hạn mức từ FPT. Bấm "Làm mới" để kiểm tra.
+            </div>
+          )}
+        </div>
+
+        {/* Danh sách mẫu tin ZNS đã duyệt */}
+        <div className="card" style={{ marginBottom: 'var(--spacing-xl)', border: '1px solid #e2e8f0', borderRadius: 8, boxShadow: 'none' }}>
+          <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff', borderBottom: '1px solid #e2e8f0', padding: '12px 18px' }}>
+            <span className="card-header-title" style={{ fontSize: 14, fontWeight: 600, color: '#0f172a' }}>
+              Danh sách mẫu tin ZNS đã duyệt ({selectedOa.templates?.length || 0})
+            </span>
+          </div>
+
+          <div className="table-wrapper">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 44, textAlign: 'center' }}>#</th>
+                  <th style={{ width: '16%', textAlign: 'left' }}>Mã Template ID</th>
+                  <th style={{ width: '24%', textAlign: 'left' }}>Tên mẫu tin</th>
+                  <th style={{ width: '16%', textAlign: 'center' }}>Loại mẫu tin</th>
+                  <th style={{ width: '22%', textAlign: 'left' }}>Tham số truyền vào</th>
+                  <th style={{ width: '11%', textAlign: 'center' }}>Trạng thái</th>
+                  <th style={{ width: '11%', textAlign: 'right' }}>Thao tác</th>
+                </tr>
+              </thead>
+              <tbody>
+                {selectedOa.templates?.map((t, idx) => (
+                  <tr
+                    key={t.id}
+                    className="clickable-row"
+                    onClick={() => setSelectedTemplate(t)}
+                  >
+                    <td className="table-col-index">{idx + 1}</td>
+                    <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-link)' }}>
+                      {t.templateId}
+                    </td>
+                    <td className="table-cell-bold">{t.templateName}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="badge badge-neutral">{t.templateTag || 'Chăm sóc khách hàng'}</span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                        {t.listParams?.map((p) => (
+                          <span
+                            key={p.name}
+                            className="badge badge-primary"
+                            style={{ fontSize: 11, fontWeight: 500 }}
+                          >
+                            {p.name}{p.require ? ' *' : ''}
+                          </span>
+                        ))}
+                        {!t.listParams?.length && (
+                          <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+                            Không có tham số động
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <span className="badge-active-pill">Kích hoạt</span>
+                    </td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-secondary"
+                        style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedTemplate(t);
+                        }}
+                      >
+                        Chi tiết
+                        <CaretRight size={13} weight="bold" />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+
+                {!selectedOa.templates?.length && (
+                  <tr>
+                    <td colSpan={7} className="empty-state">
+                      <div className="empty-state-title">Chưa có mẫu tin nào</div>
+                      <div className="empty-state-text">
+                        Zalo OA này chưa có mẫu tin ZNS nào được đồng bộ từ FPT Telecom
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Template Detail Modal */}
+        {selectedTemplate && (
+          <TemplateDetailModal
+            isOpen={!!selectedTemplate}
+            onClose={() => setSelectedTemplate(null)}
+            templateId={selectedTemplate.templateId}
+            oaId={selectedOa.id}
+            isAdmin={false}
+          />
+        )}
+      </div>
+    );
+  }
+
+
+  // ==========================================
+  // VIEW 2: BẢNG DANH SÁCH OA CỦA TÀI KHOẢN
+  // ==========================================
+  const filteredOas = (oaConfigs || []).filter((oa) => {
+    if (!searchTerm.trim()) return true;
+    const q = searchTerm.toLowerCase();
+    return (
+      oa.oaName?.toLowerCase().includes(q) ||
+      oa.oaId?.toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredOas.length / pageSize) || 1;
+  const paginatedOas = filteredOas.slice((page - 1) * pageSize, page * pageSize);
+
   return (
     <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
-      <div className="page-header-row">
-        <div>
-          <h1 className="page-header-title">Quản lý OA và API Key</h1>
-          <p className="page-header-desc">
-            Thông tin tài khoản Zalo OA, khóa bảo mật API Key kết nối và danh sách mẫu tin ZNS
-          </p>
+      {/* Header */}
+      <div className="console-section-header">
+        <h1 className="console-section-title">Quản lý Zalo OA & API Key</h1>
+        <p className="console-section-desc">
+          Danh sách các Zalo OA được cấp quyền cho tài khoản và khóa bảo mật API Key gửi tin ZNS
+        </p>
+      </div>
+
+      {/* Table Controls Toolbar */}
+      <div className="console-toolbar">
+        <div className="console-toolbar-left">
+          <div className="console-search-wrapper">
+            <MagnifyingGlass weight="bold" />
+            <input
+              type="text"
+              className="console-search-input"
+              placeholder="Tìm kiếm OA..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setPage(1);
+              }}
+            />
+          </div>
         </div>
       </div>
 
-      {!oaConfigs?.length ? (
-        <div className="card">
+      {/* Main Table Card */}
+      <div className="console-card-table">
+        {!oaConfigs?.length ? (
           <div className="empty-state">
             <div className="empty-state-title">Chưa có Zalo OA nào được liên kết</div>
             <div className="empty-state-text">
               Vui lòng liên hệ ban quản trị hệ thống để được gán Zalo OA phục vụ gửi tin ZNS
             </div>
           </div>
-        </div>
-      ) : (
-        oaConfigs.map((oa) => {
-          const isSystem = oa.isSystem;
-          const apiKey = oa.apiKey;
-          const templates = oa.templates || [];
-          const quota = oa.quotaInfo;
-          const isGuideOpen = showGuideOaId === oa.id;
-
-          return (
-            <div
-              className="card"
-              key={oa.id}
-              style={{
-                marginBottom: 'var(--spacing-lg)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--border-radius-lg)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden'
-              }}
-            >
-              {/* Header Card: OA Name, Type, Status */}
-              <div
-                style={{
-                  padding: 'var(--spacing-md) var(--spacing-lg)',
-                  borderBottom: '1px solid var(--border-color)',
-                  background: 'var(--color-gray-50)',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  flexWrap: 'wrap',
-                  gap: 'var(--spacing-md)'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--spacing-md)' }}>
-                  <div
-                    style={{
-                      width: 42,
-                      height: 42,
-                      borderRadius: 'var(--border-radius-md)',
-                      background: isSystem ? 'var(--color-primary-light)' : 'var(--color-success-light)',
-                      color: isSystem ? 'var(--color-primary)' : 'var(--color-success)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                  >
-                    {isSystem ? <ShieldCheck size={24} weight="duotone" /> : <Broadcast size={24} weight="duotone" />}
-                  </div>
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: 'var(--font-size-base)', fontWeight: 700, color: 'var(--text-primary)' }}>
-                        {oa.oaName}
-                      </span>
-                      {isSystem ? (
-                        <span className="badge badge-primary" style={{ fontSize: 11, fontWeight: 600 }}>
-                          OA Hệ thống
-                        </span>
-                      ) : (
-                        <span className="badge badge-success" style={{ fontSize: 11, fontWeight: 600 }}>
-                          OA Riêng
-                        </span>
-                      )}
-                    </div>
-                    <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', marginTop: 2 }}>
-                      Mã OA: {oa.oaId || 'Chưa cập nhật'}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span className="badge badge-success" style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                    <CheckCircle size={14} weight="fill" />
-                    Đang hoạt động
-                  </span>
-                  <button
-                    className={`btn btn-sm ${isGuideOpen ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => setShowGuideOaId(isGuideOpen ? null : oa.id)}
-                    style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                  >
-                    <Code size={16} weight="bold" />
-                    {isGuideOpen ? 'Ẩn mẫu gọi API' : 'Mẫu gọi API'}
-                  </button>
-                </div>
-              </div>
-
-              {/* Sub-block 1: API Key Section */}
-              <div
-                style={{
-                  padding: 'var(--spacing-md) var(--spacing-lg)',
-                  borderBottom: '1px solid var(--border-color)',
-                  background: '#fafbfc'
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <div
-                      style={{
-                        width: 32,
-                        height: 32,
-                        borderRadius: 'var(--border-radius-sm)',
-                        background: 'var(--color-primary-light)',
-                        color: 'var(--color-primary)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                    >
-                      <Key size={18} weight="bold" />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', fontWeight: 500 }}>
-                        API Key dành riêng cho OA này
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
-                        <code
-                          style={{
-                            fontFamily: 'monospace',
-                            fontSize: 'var(--font-size-sm)',
-                            fontWeight: 600,
-                            padding: '3px 8px',
-                            background: '#f1f5f9',
-                            borderRadius: 'var(--border-radius-sm)',
-                            border: '1px solid #e2e8f0',
-                            color: 'var(--text-primary)'
-                          }}
-                        >
-                          {apiKey?.prefix ? `${apiKey.prefix}••••••••••••••••••••••••••••••••` : 'Chưa khởi tạo'}
-                        </code>
-                        {apiKey?.isActive && (
-                          <span className="badge badge-success" style={{ fontSize: 11 }}>
-                            Hoạt động
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                    <button
-                      className="btn btn-sm btn-secondary"
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
-                      onClick={() => {
-                        if (confirm(`Bạn có chắc chắn muốn cấp lại API Key cho OA "${oa.oaName}"? Khóa cũ sẽ ngay lập tức bị vô hiệu hóa.`)) {
-                          regenerateMutation.mutate(oa.id);
-                        }
-                      }}
-                      disabled={regenerateMutation.isPending}
-                    >
-                      <ArrowsClockwise size={15} weight="bold" className={regenerateMutation.isPending ? 'spin' : ''} />
-                      Cấp lại API Key mới
-                    </button>
-                  </div>
-                </div>
-
-                {/* API Quick Usage helper */}
-                {isGuideOpen && (
-                  <div
-                    style={{
-                      marginTop: 'var(--spacing-md)',
-                      padding: 'var(--spacing-md)',
-                      background: '#1e293b',
-                      borderRadius: 'var(--border-radius-md)',
-                      color: '#f8fafc',
-                      fontSize: 'var(--font-size-xs)',
-                      overflowX: 'auto'
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8, color: '#94a3b8' }}>
-                      <span style={{ fontWeight: 600 }}>Ví dụ cURL gửi tin ZNS bằng API Key của OA này:</span>
-                      <button
-                        style={{
-                          background: 'none',
-                          border: 'none',
-                          color: '#38bdf8',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 4,
-                          fontSize: 12
-                        }}
-                        onClick={() => {
-                          const sample = `curl -X POST "${window.location.origin}/api/v1/zns/send" \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: ${apiKey?.prefix || 'YOUR_API_KEY'}..." \\
-  -d '{
-    "phone": "84901234567",
-    "templateId": "${templates[0]?.templateId || '123456'}",
-    "templateData": { "name": "Nguyen Van A" }
-  }'`;
-                          navigator.clipboard.writeText(sample);
-                          toast.success('Đã sao chép lệnh cURL mẫu');
-                        }}
-                      >
-                        <CopySimple size={14} /> Sao chép cURL
-                      </button>
-                    </div>
-                    <pre style={{ margin: 0, fontFamily: 'monospace', lineHeight: 1.6, whiteSpace: 'pre-wrap' }}>
-{`curl -X POST "${window.location.origin}/api/v1/zns/send" \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: ${apiKey?.prefix || 'YOUR_API_KEY'}..." \\
-  -d '{
-    "phone": "84901234567",
-    "templateId": "${templates[0]?.templateId || 'ID_MAU_TIN'}",
-    "templateData": {
-      "customer_name": "Nguyen Van A",
-      "order_code": "DH1001"
-    }
-  }'`}
-                    </pre>
-                  </div>
-                )}
-              </div>
-
-              {/* Sub-block 2: Quota Information */}
-              {quota && (
-                <div
-                  style={{
-                    padding: 'var(--spacing-md) var(--spacing-lg)',
-                    borderBottom: '1px solid var(--border-color)',
-                    background: 'var(--color-white)',
-                    display: 'flex',
-                    gap: 'var(--spacing-xl)',
-                    flexWrap: 'wrap'
-                  }}
-                >
-                  <div>
-                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', display: 'block' }}>
-                      Hạn mức gửi tin hàng ngày
-                    </span>
-                    <span style={{ fontSize: 'var(--font-size-base)', fontWeight: 700, color: 'var(--text-primary)' }}>
-                      {quota.dailyQuota ? quota.dailyQuota.toLocaleString('vi-VN') : 'Không giới hạn'}
-                    </span>
-                  </div>
-                  <div>
-                    <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)', display: 'block' }}>
-                      Hạn mức còn lại trong ngày
-                    </span>
-                    <span style={{ fontSize: 'var(--font-size-base)', fontWeight: 700, color: 'var(--color-success)' }}>
-                      {quota.remainingQuota ? quota.remainingQuota.toLocaleString('vi-VN') : '—'}
-                    </span>
-                  </div>
-                </div>
-              )}
-
-              {/* Sub-block 3: Templates Table */}
-              <div style={{ padding: 'var(--spacing-md) var(--spacing-lg)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-sm)' }}>
-                  <div style={{ fontSize: 'var(--font-size-sm)', fontWeight: 600, color: 'var(--text-primary)' }}>
-                    Danh sách mẫu tin nhắn ZNS đã được duyệt ({templates.length})
-                  </div>
-                </div>
-
-                <div className="table-wrapper">
-                  <table className="table" style={{ width: '100%' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '15%' }}>Mã Template ID</th>
-                        <th style={{ width: '25%' }}>Tên mẫu tin</th>
-                        <th style={{ width: '15%' }}>Loại mẫu tin</th>
-                        <th style={{ width: '30%' }}>Tham số truyền vào</th>
-                        <th style={{ width: '15%', textAlign: 'center' }}>Trạng thái</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {templates.map((t) => (
-                        <tr key={t.id}>
-                          <td style={{ fontFamily: 'monospace', fontWeight: 600, color: 'var(--color-primary)' }}>
-                            {t.templateId}
-                          </td>
-                          <td className="table-cell-bold">{t.templateName}</td>
-                          <td>
-                            <span className="badge badge-neutral">{t.templateTag || 'Chăm sóc khách hàng'}</span>
-                          </td>
-                          <td>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                              {t.listParams?.map((p) => (
-                                <span
-                                  key={p.name}
-                                  className="badge badge-primary"
-                                  style={{ fontSize: 11, fontWeight: 500 }}
-                                >
-                                  {p.name}{p.require ? ' *' : ''}
-                                </span>
-                              ))}
-                              {!t.listParams?.length && (
-                                <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                                  Không có tham số động
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <span className="badge badge-success">Kích hoạt</span>
-                          </td>
-                        </tr>
-                      ))}
-
-                      {!templates.length && (
-                        <tr>
-                          <td colSpan={5} className="empty-state" style={{ padding: 'var(--spacing-md)' }}>
-                            <div className="empty-state-text">Chưa có mẫu tin nào được đồng bộ cho OA này</div>
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            </div>
-          );
-        })
-      )}
-
-      {/* Modal Hiển thị API Key mới sau khi cấp lại */}
-      {newlyRegeneratedKey && (
-        <div className="modal-overlay" style={{ zIndex: 1000 }}>
-          <div className="modal" style={{ maxWidth: 540 }}>
-            <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <Sparkle size={20} color="var(--color-success)" weight="fill" />
-                <h3 className="modal-title">API Key mới đã được tạo</h3>
-              </div>
-              <button
-                className="modal-close"
-                onClick={() => setNewlyRegeneratedKey(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="modal-body">
-              <div
-                style={{
-                  padding: 'var(--spacing-md)',
-                  background: '#fef3c7',
-                  border: '1px solid #fde68a',
-                  borderRadius: 'var(--border-radius-md)',
-                  marginBottom: 'var(--spacing-md)',
-                  display: 'flex',
-                  gap: 10
-                }}
-              >
-                <WarningCircle size={20} color="#b45309" weight="fill" style={{ flexShrink: 0, marginTop: 2 }} />
-                <div style={{ fontSize: 'var(--font-size-xs)', color: '#92400e', lineHeight: 1.5 }}>
-                  <strong>Lưu ý quan trọng:</strong> Vì lý do bảo mật, chuỗi API Key này chỉ được hiển thị <strong>một lần duy nhất</strong>. Vui lòng sao chép và lưu trữ cẩn thận vào hệ thống của bạn.
-                </div>
-              </div>
-
-              <label className="form-label" style={{ fontWeight: 600 }}>Chuỗi API Key bí mật</label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                <input
-                  type="text"
-                  readOnly
-                  className="form-input"
-                  value={newlyRegeneratedKey.apiKey}
-                  style={{ fontFamily: 'monospace', fontWeight: 600, fontSize: 13, background: '#f8fafc' }}
-                />
-                <button
-                  type="button"
-                  className={`btn ${copiedKey ? 'btn-success' : 'btn-primary'}`}
-                  onClick={handleCopyNewKey}
-                  style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0 }}
-                >
-                  {copiedKey ? <Check size={16} weight="bold" /> : <CopySimple size={16} weight="bold" />}
-                  {copiedKey ? 'Đã sao chép' : 'Sao chép'}
-                </button>
-              </div>
-
-              <div style={{ marginTop: 'var(--spacing-md)', fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                Sử dụng API Key này truyền vào HTTP Header: <code style={{ fontFamily: 'monospace', fontWeight: 600 }}>x-api-key: {newlyRegeneratedKey.apiKey}</code>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => setNewlyRegeneratedKey(null)}
-              >
-                Tôi đã lưu API Key an toàn
-              </button>
+        ) : !filteredOas.length ? (
+          <div className="empty-state">
+            <div className="empty-state-title">Không tìm thấy Zalo OA phù hợp</div>
+            <div className="empty-state-text">
+              Thử tìm kiếm với từ khóa khác như tên OA hoặc mã OA
             </div>
           </div>
-        </div>
-      )}
+        ) : (
+          <>
+            <div className="table-wrapper">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 44, textAlign: 'center' }}>#</th>
+                    <th style={{ width: '26%', textAlign: 'left' }}>Tên Zalo OA</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>Trạng thái</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>Loại OA</th>
+                    <th style={{ width: '24%', textAlign: 'left' }}>Khóa API Key</th>
+                    <th style={{ width: '10%', textAlign: 'center' }}>Mẫu tin</th>
+                    <th style={{ width: '10%', textAlign: 'right' }}>Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedOas.map((oa, index) => {
+                    const apiKeyVal = oa.apiKey?.apiKey || (oa.apiKey?.prefix ? `${oa.apiKey.prefix}••••••••••••••••••••••••••••••••` : '');
+                    const isCopied = copiedKeyOaId === oa.id;
+                    const rowIndex = (page - 1) * pageSize + index + 1;
+
+                    return (
+                      <tr
+                        key={oa.id}
+                        className="clickable-row"
+                        onClick={() => {
+                          setSelectedOaId(oa.id);
+                          setShowKeyVisible(false);
+                        }}
+                      >
+                        {/* Cột 1: STT # */}
+                        <td className="table-col-index">{rowIndex}</td>
+
+                        {/* Cột 2: Tên Zalo OA */}
+                        <td>
+                          <div>
+                            <span
+                              className="table-cell-link"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedOaId(oa.id);
+                                setShowKeyVisible(false);
+                              }}
+                            >
+                              {oa.oaName}
+                            </span>
+                            <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
+                              Mã OA: {oa.oaId || 'Chưa cập nhật'}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Cột 3: Trạng thái */}
+                        <td>
+                          <span className="badge-active-pill">Đang hoạt động</span>
+                        </td>
+
+                        {/* Cột 4: Loại OA */}
+                        <td>
+                          {oa.isSystem ? (
+                            <span className="badge badge-primary">OA Hệ thống</span>
+                          ) : (
+                            <span className="badge badge-success">OA Riêng</span>
+                          )}
+                        </td>
+
+                        {/* Cột 5: Khóa API Key */}
+                        <td onClick={(e) => e.stopPropagation()}>
+                          {oa.apiKey ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                              <code
+                                style={{
+                                  background: '#f1f5f9',
+                                  padding: '4px 8px',
+                                  borderRadius: 4,
+                                  fontFamily: 'monospace',
+                                  fontSize: 12,
+                                  fontWeight: 600,
+                                  color: '#0f172a',
+                                  maxWidth: 160,
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                  border: '1px solid #e2e8f0',
+                                }}
+                                title={apiKeyVal}
+                              >
+                                {oa.apiKey.apiKey ? `${oa.apiKey.apiKey.substring(0, 14)}••••` : `${oa.apiKey.prefix}••••••••`}
+                              </code>
+                              <button
+                                type="button"
+                                className={`btn btn-sm ${isCopied ? 'btn-success' : 'btn-secondary'}`}
+                                style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, height: 26 }}
+                                title="Sao chép toàn bộ API Key"
+                                onClick={() => handleCopyText(oa.apiKey?.apiKey || oa.apiKey?.prefix, 'row-key', oa.id)}
+                              >
+                                {isCopied ? <Check size={13} weight="bold" /> : <CopySimple size={13} />}
+                                <span style={{ fontSize: 11 }}>{isCopied ? 'Đã chép' : 'Chép'}</span>
+                              </button>
+                            </div>
+                          ) : (
+                            <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
+                              Chưa khởi tạo
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Cột 6: Mẫu tin */}
+                        <td style={{ textAlign: 'center' }}>
+                          <span className="badge badge-neutral">
+                            {oa.templates?.length || 0} mẫu
+                          </span>
+                        </td>
+
+                        {/* Cột 7: Thao tác */}
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-secondary"
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontWeight: 500,
+                              fontSize: 12,
+                              padding: '5px 10px',
+                            }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedOaId(oa.id);
+                              setShowKeyVisible(false);
+                            }}
+                          >
+                            Chi tiết
+                            <CaretRight size={13} weight="bold" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              pageSize={pageSize}
+              totalItems={filteredOas.length}
+              onPageChange={setPage}
+              onPageSizeChange={(newSize) => {
+                setPageSize(newSize);
+                setPage(1);
+              }}
+            />
+          </>
+        )}
+      </div>
     </div>
   );
 }
-

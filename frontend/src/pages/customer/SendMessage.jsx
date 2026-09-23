@@ -55,7 +55,7 @@ export default function CustomerSendMessage() {
   };
 
   return (
-    <div style={{ maxWidth: '800px', margin: '0 auto' }}>
+    <div style={{ width: '100%' }}>
       <div className="page-header-row">
         <div>
           <h1 className="page-header-title">Gửi tin thử nghiệm</h1>

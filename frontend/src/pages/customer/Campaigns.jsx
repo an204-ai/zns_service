@@ -7,6 +7,7 @@ import {
   Plus, Megaphone, UploadSimple, DownloadSimple,
   FileXls, CheckCircle, WarningCircle, Info
 } from '@phosphor-icons/react';
+import Pagination from '../../components/Pagination';
 
 export default function CustomerCampaigns() {
   const queryClient = useQueryClient();
@@ -199,15 +200,13 @@ export default function CustomerCampaigns() {
               </table>
             </div>
 
-            {data?.totalPages > 1 && (
-              <div className="pagination">
-                <div className="pagination-info">Trang {page} / {data.totalPages} ({data.total} chiến dịch)</div>
-                <div className="pagination-controls">
-                  <button className="pagination-btn" disabled={page <= 1} onClick={() => setPage(p => p - 1)}>Trước</button>
-                  <button className="pagination-btn" disabled={page >= data.totalPages} onClick={() => setPage(p => p + 1)}>Sau</button>
-                </div>
-              </div>
-            )}
+            <Pagination
+              currentPage={page}
+              totalPages={data?.totalPages || 1}
+              pageSize={15}
+              totalItems={data?.total}
+              onPageChange={setPage}
+            />
           </>
         )}
       </div>

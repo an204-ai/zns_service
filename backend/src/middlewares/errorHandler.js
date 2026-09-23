@@ -29,10 +29,8 @@ function errorHandler(err, req, res, _next) {
     });
   }
 
-  const statusCode = err.statusCode || 500;
-  const message = statusCode === 500
-    ? 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.'
-    : err.message;
+  const statusCode = err.statusCode || (err.isAxiosError ? 502 : 500);
+  const message = err.message || 'Đã xảy ra lỗi hệ thống. Vui lòng thử lại sau.';
 
   res.status(statusCode).json({ success: false, message });
 }

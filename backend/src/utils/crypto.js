@@ -25,18 +25,28 @@ function encrypt(text) {
  * Decrypt a string encrypted with AES-256-GCM
  */
 function decrypt(encryptedText) {
-  const key = Buffer.from(env.ENCRYPTION_KEY, 'utf-8').subarray(0, 32);
-  const [ivHex, authTagHex, encrypted] = encryptedText.split(':');
+  if (!encryptedText) return '';
+  if (typeof encryptedText !== 'string' || !encryptedText.includes(':')) {
+    return encryptedText;
+  }
 
-  const iv = Buffer.from(ivHex, 'hex');
-  const authTag = Buffer.from(authTagHex, 'hex');
-  const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
+  try {
+    const key = Buffer.from(env.ENCRYPTION_KEY, 'utf-8').subarray(0, 32);
+    const [ivHex, authTagHex, encrypted] = encryptedText.split(':');
+    if (!ivHex || !authTagHex || !encrypted) return encryptedText;
 
-  let decrypted = decipher.update(encrypted, 'hex', 'utf8');
-  decrypted += decipher.final('utf8');
+    const iv = Buffer.from(ivHex, 'hex');
+    const authTag = Buffer.from(authTagHex, 'hex');
+    const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
+    decipher.setAuthTag(authTag);
 
-  return decrypted;
+    let decrypted = decipher.update(encrypted, 'hex', 'utf8');
+    decrypted += decipher.final('utf8');
+
+    return decrypted;
+  } catch (err) {
+    return encryptedText;
+  }
 }
 
 /**

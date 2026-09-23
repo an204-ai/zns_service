@@ -39,7 +39,7 @@ async function dashboard(req, res, next) {
             { isSystem: true, assignments: { some: { userId } } },
           ],
         },
-        select: { id: true, oaName: true, isSystem: true, quotaInfo: true },
+        select: { id: true, oaName: true, isSystem: true },
       }),
     ]);
 
@@ -55,18 +55,6 @@ async function dashboard(req, res, next) {
       };
     });
 
-    // Calculate quota info
-    let totalQuota = 60000;
-    let usedQuota = monthStats.total || 0;
-    if (oaConfigs.length > 0 && oaConfigs[0].quotaInfo?.total_quota) {
-      totalQuota = oaConfigs[0].quotaInfo.total_quota;
-      if (oaConfigs[0].quotaInfo.used_quota !== undefined) {
-        usedQuota = Math.max(usedQuota, oaConfigs[0].quotaInfo.used_quota);
-      }
-    }
-    const availableQuota = Math.max(0, totalQuota - usedQuota);
-    const usedPercent = totalQuota > 0 ? Math.round((usedQuota / totalQuota) * 100) : 0;
-
     res.json({
       success: true,
       data: {
@@ -77,12 +65,6 @@ async function dashboard(req, res, next) {
         monthStats: {
           transactions: monthStats.success || 0,
           requests: monthStats.total || 0,
-        },
-        quota: {
-          used: usedQuota,
-          total: totalQuota,
-          available: availableQuota,
-          percent: usedPercent,
         },
         chartData,
         dailyStats: dailyStatsRaw,
@@ -142,28 +124,26 @@ async function listApiKeys(req, res, next) {
 
 /** POST /api/v1/customer/api-keys */
 async function createApiKey(req, res, next) {
-  try {
-    const { keyName } = req.body;
-    if (!keyName) return res.status(400).json({ success: false, message: 'Vui lòng nhập tên API Key' });
-    const key = await apiKeyService.createApiKey(req.user.id, keyName);
-    res.status(201).json({ success: true, data: key });
-  } catch (error) { next(error); }
+  return res.status(403).json({
+    success: false,
+    message: 'Chức năng tạo API Key chỉ được thực hiện bởi Quản trị viên hệ thống. Vui lòng liên hệ Admin để được hỗ trợ.',
+  });
 }
 
 /** PATCH /api/v1/customer/api-keys/:id/toggle */
 async function toggleApiKey(req, res, next) {
-  try {
-    const result = await apiKeyService.toggleApiKey(req.params.id, req.user.id);
-    res.json({ success: true, data: result });
-  } catch (error) { next(error); }
+  return res.status(403).json({
+    success: false,
+    message: 'Chức năng thay đổi trạng thái API Key chỉ được thực hiện bởi Quản trị viên hệ thống.',
+  });
 }
 
 /** DELETE /api/v1/customer/api-keys/:id */
 async function deleteApiKey(req, res, next) {
-  try {
-    await apiKeyService.deleteApiKey(req.params.id, req.user.id);
-    res.json({ success: true, message: 'Xoá API Key thành công' });
-  } catch (error) { next(error); }
+  return res.status(403).json({
+    success: false,
+    message: 'Chức năng xoá API Key chỉ được thực hiện bởi Quản trị viên hệ thống.',
+  });
 }
 
 /** GET /api/v1/customer/oa-configs */
@@ -202,7 +182,6 @@ async function listOAConfigs(req, res, next) {
         oaId: c.oaId,
         isSystem: c.isSystem,
         oaInfo: c.oaInfo,
-        quotaInfo: c.quotaInfo,
         status: c.status,
         templates: c.templates,
         syncedAt: c.syncedAt,
@@ -216,11 +195,64 @@ async function listOAConfigs(req, res, next) {
 
 /** POST /api/v1/customer/oa-configs/:id/regenerate-key */
 async function regenerateOAKey(req, res, next) {
+  return res.status(403).json({
+    success: false,
+    message: 'Chức năng cấp lại API Key chỉ được thực hiện bởi Quản trị viên hệ thống. Vui lòng liên hệ Admin để được hỗ trợ.',
+  });
+}
+
+async function verifyCustomerOAAccess(userId, oaConfigId) {
+  return prisma.fptOaConfig.findFirst({
+    where: {
+      id: oaConfigId,
+      status: 'ACTIVE',
+      OR: [
+        { userId },
+        { isSystem: true, assignments: { some: { userId } } },
+      ],
+    },
+  });
+}
+
+/** GET /api/v1/customer/oa-configs/:id/quota */
+async function getOAQuota(req, res, next) {
   try {
-    const newKey = await apiKeyService.regenerateApiKeyForOA(req.user.id, req.params.id);
-    res.json({ success: true, data: newKey, message: 'Đã cấp lại API Key ngẫu nhiên mới cho OA' });
+    const oa = await verifyCustomerOAAccess(req.user.id, req.params.id);
+    if (!oa) return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập Zalo OA này' });
+
+    const forceRefresh = req.query.refresh === 'true' || req.query.refresh === '1';
+    const quota = await oaConfigService.getOAQuota(req.params.id, forceRefresh);
+    res.json({ success: true, data: quota });
   } catch (error) { next(error); }
 }
+
+/** GET /api/v1/customer/oa-configs/:oaId/templates/:templateId/ratings */
+async function getTemplateRatings(req, res, next) {
+  try {
+    const oa = await verifyCustomerOAAccess(req.user.id, req.params.oaId);
+    if (!oa) return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập Zalo OA này' });
+
+    const { from_time, to_time, page } = req.query;
+    const ratings = await oaConfigService.getTemplateRatings(req.params.oaId, req.params.templateId, {
+      fromTime: from_time,
+      toTime: to_time,
+      page,
+    });
+    res.json({ success: true, data: ratings });
+  } catch (error) { next(error); }
+}
+
+/** GET /api/v1/customer/oa-configs/:oaId/templates/:templateId/detail */
+async function getTemplateDetail(req, res, next) {
+  try {
+    const oa = await verifyCustomerOAAccess(req.user.id, req.params.oaId);
+    if (!oa) return res.status(403).json({ success: false, message: 'Bạn không có quyền truy cập Zalo OA này' });
+
+    const detail = await oaConfigService.getTemplateLiveDetail(req.params.oaId, req.params.templateId);
+    res.json({ success: true, data: detail });
+  } catch (error) { next(error); }
+}
+
 
 /** POST /api/v1/customer/send-message */
 async function sendMessage(req, res, next) {
@@ -362,6 +394,7 @@ module.exports = {
   dashboard, getProfile, updateProfile, changePassword,
   listApiKeys, createApiKey, toggleApiKey, deleteApiKey,
   listOAConfigs, regenerateOAKey, sendMessage,
+  getOAQuota, getTemplateRatings, getTemplateDetail,
   createCampaign, listCampaigns, getCampaign,
   listMessages, getMessage,
 };
