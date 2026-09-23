@@ -82,7 +82,7 @@ export default function AdminMessages() {
                     <th style={{ width: 44, textAlign: 'center' }}>#</th>
                     <th style={{ width: '17%' }}>Thời gian <span className="th-sort">⇅</span></th>
                     <th style={{ width: '20%' }}>Khách hàng <span className="th-sort">⇅</span></th>
-                    <th style={{ width: '16%' }}>Zalo OA <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '16%' }}>Ứng dụng liên kết <span className="th-sort">⇅</span></th>
                     <th style={{ width: '15%' }}>Số điện thoại <span className="th-sort">⇅</span></th>
                     <th style={{ width: '12%' }}>Mã Template <span className="th-sort">⇅</span></th>
                     <th style={{ width: '10%', textAlign: 'center' }}>Trạng thái <span className="th-sort">⇅</span></th>
@@ -100,7 +100,7 @@ export default function AdminMessages() {
                         {m.user?.companyName || m.user?.fullName}
                       </td>
                       <td style={{ fontSize: 12.5, color: '#475569' }}>
-                        {m.fptOaConfig?.oaName}
+                        {m.fptAppConfig?.oaName || m.fptOaConfig?.oaName || '—'}
                       </td>
                       <td style={{ fontFamily: 'monospace', fontSize: 13 }}>
                         {m.phone}

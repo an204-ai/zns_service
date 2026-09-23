@@ -3,12 +3,13 @@ const { prisma } = require('../config/database');
 /**
  * Create a new campaign
  */
-async function createCampaign({ userId, name, fptOaConfigId, templateId, totalMessages, source = 'PORTAL' }) {
+async function createCampaign({ userId, name, fptAppConfigId, fptOaConfigId, templateId, totalMessages, source = 'PORTAL' }) {
+  const configId = fptAppConfigId || fptOaConfigId;
   return prisma.campaign.create({
     data: {
       userId,
       name,
-      fptOaConfigId,
+      fptAppConfigId: configId,
       templateId,
       totalMessages,
       source,
@@ -30,7 +31,7 @@ async function getCampaigns({ userId, status, page = 1, limit = 20 }) {
       where,
       include: {
         user: { select: { id: true, fullName: true, companyName: true } },
-        fptOaConfig: { select: { id: true, oaName: true } },
+        fptAppConfig: { select: { id: true, oaName: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
@@ -39,20 +40,31 @@ async function getCampaigns({ userId, status, page = 1, limit = 20 }) {
     prisma.campaign.count({ where }),
   ]);
 
-  return { data, total, page, totalPages: Math.ceil(total / limit) };
+  const formattedData = data.map((c) => ({
+    ...c,
+    fptOaConfig: c.fptAppConfig,
+  }));
+
+  return { data: formattedData, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
  * Get campaign by ID
  */
 async function getCampaignById(id) {
-  return prisma.campaign.findUnique({
+  const campaign = await prisma.campaign.findUnique({
     where: { id },
     include: {
       user: { select: { id: true, fullName: true } },
-      fptOaConfig: { select: { id: true, oaName: true } },
+      fptAppConfig: { select: { id: true, oaName: true } },
     },
   });
+
+  if (campaign) {
+    campaign.fptOaConfig = campaign.fptAppConfig;
+  }
+
+  return campaign;
 }
 
 /**

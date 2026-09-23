@@ -14,7 +14,7 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
   const apiKey = await prisma.apiKey.create({
     data: {
       userId,
-      oaConfigId: oaConfigId || null,
+      appConfigId: oaConfigId || null,
       keyName,
       apiKeyHash,
       apiKeyEncrypted,
@@ -22,7 +22,7 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
       isActive: true,
     },
     include: {
-      oaConfig: {
+      appConfig: {
         select: { id: true, oaName: true, isSystem: true, fptAppId: true },
       },
     },
@@ -32,8 +32,10 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
     id: apiKey.id,
     keyName: apiKey.keyName,
     prefix: apiKey.prefix,
-    oaConfigId: apiKey.oaConfigId,
-    oaConfig: apiKey.oaConfig,
+    appConfigId: apiKey.appConfigId,
+    oaConfigId: apiKey.appConfigId,
+    appConfig: apiKey.appConfig,
+    oaConfig: apiKey.appConfig,
     apiKey: plainKey,
     createdAt: apiKey.createdAt,
   };
@@ -45,16 +47,17 @@ async function createApiKey(userId, keyName, oaConfigId = null) {
  */
 async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
   let key = await prisma.apiKey.findFirst({
-    where: { userId, oaConfigId },
+    where: { userId, appConfigId: oaConfigId },
     include: {
-      oaConfig: {
+      appConfig: {
         select: { id: true, oaName: true, isSystem: true },
       },
     },
   });
 
   if (!key) {
-    const oa = await prisma.fptOaConfig.findUnique({ where: { id: oaConfigId } });
+    const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
+    const oa = await appModel.findUnique({ where: { id: oaConfigId } });
     const generatedName = keyName || (oa ? `Khóa API - ${oa.oaName}` : 'Khóa API ZNS');
     key = await createApiKey(userId, generatedName, oaConfigId);
     return key;
@@ -87,8 +90,10 @@ async function getOrCreateApiKeyForOA(userId, oaConfigId, keyName = null) {
     keyName: key.keyName,
     prefix: key.prefix,
     apiKey: plainKey,
-    oaConfigId: key.oaConfigId,
-    oaConfig: key.oaConfig,
+    appConfigId: key.appConfigId,
+    oaConfigId: key.appConfigId,
+    appConfig: key.appConfig,
+    oaConfig: key.appConfig,
     isActive: key.isActive,
     lastUsedAt: key.lastUsedAt,
     createdAt: key.createdAt,
@@ -104,7 +109,7 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
   const prefix = getApiKeyPrefix(plainKey);
   const apiKeyEncrypted = encrypt(plainKey);
 
-  const existing = await prisma.apiKey.findFirst({ where: { userId, oaConfigId } });
+  const existing = await prisma.apiKey.findFirst({ where: { userId, appConfigId: oaConfigId } });
 
   if (existing) {
     const updated = await prisma.apiKey.update({
@@ -122,14 +127,16 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
       keyName: updated.keyName,
       prefix: updated.prefix,
       apiKey: plainKey,
+      appConfigId: oaConfigId,
       oaConfigId,
     };
   } else {
-    const oa = await prisma.fptOaConfig.findUnique({ where: { id: oaConfigId } });
+    const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
+    const oa = await appModel.findUnique({ where: { id: oaConfigId } });
     const key = await prisma.apiKey.create({
       data: {
         userId,
-        oaConfigId,
+        appConfigId: oaConfigId,
         keyName: oa ? `Khóa API - ${oa.oaName}` : 'Khóa API ZNS',
         apiKeyHash,
         apiKeyEncrypted,
@@ -142,6 +149,7 @@ async function regenerateApiKeyForOA(userId, oaConfigId) {
       keyName: key.keyName,
       prefix: key.prefix,
       apiKey: plainKey,
+      appConfigId: oaConfigId,
       oaConfigId,
     };
   }
@@ -158,11 +166,11 @@ async function getApiKeys(userId) {
       keyName: true,
       prefix: true,
       apiKeyEncrypted: true,
-      oaConfigId: true,
+      appConfigId: true,
       isActive: true,
       lastUsedAt: true,
       createdAt: true,
-      oaConfig: {
+      appConfig: {
         select: { id: true, oaName: true, isSystem: true, fptAppId: true },
       },
     },
@@ -181,11 +189,13 @@ async function getApiKeys(userId) {
       keyName: k.keyName,
       prefix: k.prefix,
       apiKey: plainKey || `${k.prefix}...`,
-      oaConfigId: k.oaConfigId,
+      appConfigId: k.appConfigId,
+      oaConfigId: k.appConfigId,
       isActive: k.isActive,
       lastUsedAt: k.lastUsedAt,
       createdAt: k.createdAt,
-      oaConfig: k.oaConfig,
+      appConfig: k.appConfig,
+      oaConfig: k.appConfig,
     };
   });
 }

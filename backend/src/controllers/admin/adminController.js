@@ -117,20 +117,20 @@ async function createSystemOAConfig(req, res, next) {
 /** POST /api/v1/admin/customers/:id/assign-system-oa */
 async function assignSystemOA(req, res, next) {
   try {
-    const { oaConfigId } = req.body;
-    if (!oaConfigId) {
-      return res.status(400).json({ success: false, message: 'Vui lòng chọn OA Hệ thống cần gán' });
+    const targetId = req.body.appConfigId || req.body.oaConfigId;
+    if (!targetId) {
+      return res.status(400).json({ success: false, message: 'Vui lòng chọn Ứng dụng hệ thống cần gán' });
     }
-    const result = await oaConfigService.assignSystemOA({ userId: req.params.id, oaConfigId });
-    res.json({ success: true, data: result, message: 'Gán OA Hệ thống cho khách hàng thành công' });
+    const result = await oaConfigService.assignSystemOA({ userId: req.params.id, appConfigId: targetId });
+    res.json({ success: true, data: result, message: 'Gán Ứng dụng hệ thống cho khách hàng thành công' });
   } catch (error) { next(error); }
 }
 
 /** DELETE /api/v1/admin/customers/:id/assign-system-oa/:oaId */
 async function unassignSystemOA(req, res, next) {
   try {
-    await oaConfigService.unassignSystemOA({ userId: req.params.id, oaConfigId: req.params.oaId });
-    res.json({ success: true, message: 'Đã hủy gán OA Hệ thống khỏi khách hàng' });
+    await oaConfigService.unassignSystemOA({ userId: req.params.id, appConfigId: req.params.oaId });
+    res.json({ success: true, message: 'Đã hủy gán Ứng dụng hệ thống khỏi khách hàng' });
   } catch (error) { next(error); }
 }
 
@@ -186,15 +186,16 @@ async function updateOAStatus(req, res, next) {
 /** GET /api/v1/admin/templates */
 async function listTemplates(req, res, next) {
   try {
-    const { oaConfigId, status, page = 1, limit = 50 } = req.query;
+    const { oaConfigId, appConfigId, status, page = 1, limit = 50 } = req.query;
+    const configId = appConfigId || oaConfigId;
     const where = {};
-    if (oaConfigId) where.fptOaConfigId = oaConfigId;
+    if (configId) where.fptAppConfigId = configId;
     if (status) where.status = status;
 
     const [data, total] = await Promise.all([
       prisma.znsTemplate.findMany({
         where,
-        include: { fptOaConfig: { select: { id: true, oaName: true } } },
+        include: { fptAppConfig: { select: { id: true, oaName: true } } },
         orderBy: { templateName: 'asc' },
         skip: (+page - 1) * +limit,
         take: +limit,
@@ -202,7 +203,12 @@ async function listTemplates(req, res, next) {
       prisma.znsTemplate.count({ where }),
     ]);
 
-    res.json({ success: true, data, total, page: +page, totalPages: Math.ceil(total / +limit) });
+    const formattedData = data.map(t => ({
+      ...t,
+      fptOaConfig: t.fptAppConfig,
+    }));
+
+    res.json({ success: true, data: formattedData, total, page: +page, totalPages: Math.ceil(total / +limit) });
   } catch (error) { next(error); }
 }
 
@@ -233,7 +239,7 @@ async function dashboard(req, res, next) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const [totalCustomers, activeCustomers, todayStats, dailyStats, recentMessages] = await Promise.all([
+    const [totalCustomers, activeCustomers, todayStats, dailyStats, recentMessagesRaw] = await Promise.all([
       prisma.user.count({ where: { role: 'CUSTOMER' } }),
       prisma.user.count({ where: { role: 'CUSTOMER', status: 'ACTIVE' } }),
       znsService.getMessageStats({ fromDate: today.toISOString() }),
@@ -243,10 +249,15 @@ async function dashboard(req, res, next) {
         orderBy: { createdAt: 'desc' },
         include: {
           user: { select: { fullName: true, companyName: true } },
-          fptOaConfig: { select: { oaName: true } },
+          fptAppConfig: { select: { oaName: true } },
         },
       }),
     ]);
+
+    const recentMessages = (recentMessagesRaw || []).map(m => ({
+      ...m,
+      fptOaConfig: m.fptAppConfig,
+    }));
 
     res.json({
       success: true,
@@ -298,8 +309,8 @@ async function createCustomerPrivateOA(req, res, next) {
       fptSecretKey: fptSecretKey.trim(),
     });
     const message = oa.connectionWarning
-      ? `Thêm OA riêng cho khách hàng thành công! (Lưu ý: ${oa.connectionWarning})`
-      : 'Thêm OA riêng cho khách hàng thành công';
+      ? `Thêm ứng dụng liên kết riêng cho khách hàng thành công! (Lưu ý: ${oa.connectionWarning})`
+      : 'Thêm ứng dụng liên kết riêng cho khách hàng thành công';
     res.status(201).json({ success: true, data: oa, message });
   } catch (error) { next(error); }
 }
@@ -308,7 +319,7 @@ async function createCustomerPrivateOA(req, res, next) {
 async function deleteCustomerPrivateOA(req, res, next) {
   try {
     await customerService.deleteCustomerPrivateOA(req.params.id, req.params.oaId);
-    res.json({ success: true, message: 'Đã xóa OA riêng khỏi khách hàng' });
+    res.json({ success: true, message: 'Đã xóa ứng dụng liên kết riêng khỏi khách hàng' });
   } catch (error) { next(error); }
 }
 
@@ -316,7 +327,7 @@ async function deleteCustomerPrivateOA(req, res, next) {
 async function regenerateCustomerOAKey(req, res, next) {
   try {
     const newKey = await customerService.regenerateOAKey(req.params.id, req.params.oaId);
-    res.json({ success: true, data: newKey, message: 'Đã cấp lại API Key ngẫu nhiên mới cho OA' });
+    res.json({ success: true, data: newKey, message: 'Đã cấp lại API Key ngẫu nhiên mới cho ứng dụng' });
   } catch (error) { next(error); }
 }
 
@@ -324,7 +335,7 @@ async function regenerateCustomerOAKey(req, res, next) {
 async function deleteOAConfig(req, res, next) {
   try {
     await oaConfigService.deleteOAConfig(req.params.id);
-    res.json({ success: true, message: 'Đã xóa cấu hình OA thành công' });
+    res.json({ success: true, message: 'Đã xóa ứng dụng liên kết thành công' });
   } catch (error) { next(error); }
 }
 
@@ -332,7 +343,7 @@ async function updateOAConfig(req, res, next) {
   try {
     const { oaName, fptAppId, fptSecretKey, status } = req.body;
     const config = await oaConfigService.updateOAConfig(req.params.id, { oaName, fptAppId, fptSecretKey, status });
-    res.json({ success: true, message: 'Cập nhật cấu hình OA thành công', data: config });
+    res.json({ success: true, message: 'Cập nhật ứng dụng liên kết thành công', data: config });
   } catch (error) { next(error); }
 }
 

@@ -17,7 +17,8 @@ async function dashboard(req, res, next) {
     // Start of this month
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const [todayStats, monthStats, dailyStatsRaw, recentMessages, oaConfigs] = await Promise.all([
+    const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
+    const [todayStats, monthStats, dailyStatsRaw, recentMessagesRaw, oaConfigs] = await Promise.all([
       znsService.getMessageStats({ userId, fromDate: startOfToday.toISOString() }),
       znsService.getMessageStats({ userId, fromDate: startOfMonth.toISOString() }),
       znsService.getDailyStats({ userId, days: 8 }),
@@ -28,10 +29,10 @@ async function dashboard(req, res, next) {
         select: {
           id: true, phone: true, templateId: true, status: true,
           errorCode: true, createdAt: true, deliveredAt: true,
-          fptOaConfig: { select: { oaName: true } },
+          fptAppConfig: { select: { oaName: true } },
         },
       }),
-      prisma.fptOaConfig.findMany({
+      appModel.findMany({
         where: {
           status: 'ACTIVE',
           OR: [
@@ -42,6 +43,11 @@ async function dashboard(req, res, next) {
         select: { id: true, oaName: true, isSystem: true },
       }),
     ]);
+
+    const recentMessages = (recentMessagesRaw || []).map((m) => ({
+      ...m,
+      fptOaConfig: m.fptAppConfig,
+    }));
 
     // Format chart data (DD/MM)
     const chartData = (dailyStatsRaw || []).map(day => {
@@ -70,6 +76,7 @@ async function dashboard(req, res, next) {
         dailyStats: dailyStatsRaw,
         recentMessages,
         oaConfigs,
+        appConfigs: oaConfigs,
       },
     });
   } catch (error) { next(error); }
@@ -257,15 +264,16 @@ async function getTemplateDetail(req, res, next) {
 /** POST /api/v1/customer/send-message */
 async function sendMessage(req, res, next) {
   try {
-    const { fptOaConfigId, templateId, phone, templateData, refId, callbackUrl } = req.body;
+    const { fptAppConfigId, fptOaConfigId, templateId, phone, templateData, refId, callbackUrl } = req.body;
+    const configId = fptAppConfigId || fptOaConfigId;
 
-    if (!fptOaConfigId || !templateId || !phone || !templateData) {
+    if (!configId || !templateId || !phone || !templateData) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đầy đủ thông tin' });
     }
 
     const message = await znsService.queueMessage({
       userId: req.user.id,
-      fptOaConfigId,
+      fptAppConfigId: configId,
       templateId,
       phone,
       templateData,
@@ -283,10 +291,11 @@ async function sendMessage(req, res, next) {
 /** POST /api/v1/customer/campaigns */
 async function createCampaign(req, res, next) {
   try {
-    const { name, fptOaConfigId, templateId } = req.body;
+    const { name, fptAppConfigId, fptOaConfigId, templateId } = req.body;
+    const configId = fptAppConfigId || fptOaConfigId;
     const file = req.file;
 
-    if (!name || !fptOaConfigId || !templateId || !file) {
+    if (!name || !configId || !templateId || !file) {
       return res.status(400).json({ success: false, message: 'Vui lòng nhập đủ thông tin và tải lên file Excel' });
     }
 
@@ -318,7 +327,7 @@ async function createCampaign(req, res, next) {
     const campaign = await campaignService.createCampaign({
       userId: req.user.id,
       name,
-      fptOaConfigId,
+      fptAppConfigId: configId,
       templateId: +templateId,
       totalMessages: records.length,
       source: 'EXCEL',
@@ -330,7 +339,7 @@ async function createCampaign(req, res, next) {
     // Queue batch messages
     await znsService.queueBatchMessages({
       userId: req.user.id,
-      fptOaConfigId,
+      fptAppConfigId: configId,
       templateId: +templateId,
       records,
       campaignId: campaign.id,

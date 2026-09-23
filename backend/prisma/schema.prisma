@@ -62,15 +62,15 @@ model User {
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
   apiKeys             ApiKey[]
-  oaConfigs           FptOaConfig[]
-  systemOaAssignments CustomerOaAssignment[]
+  appConfigs          FptAppConfig[]
+  systemAppAssignments CustomerAppAssignment[]
   messages            Message[]
   campaigns           Campaign[]
 
   @@map("users")
 }
 
-model FptOaConfig {
+model FptAppConfig {
   id                    String    @id @default(uuid()) @db.Uuid
   userId                String?   @map("user_id") @db.Uuid
   oaName                String    @map("oa_name") @db.VarChar(255)
@@ -88,28 +88,28 @@ model FptOaConfig {
   templates   ZnsTemplate[]
   messages    Message[]
   campaigns   Campaign[]
-  assignments CustomerOaAssignment[]
+  assignments CustomerAppAssignment[]
   apiKeys     ApiKey[]
 
-  @@map("fpt_oa_configs")
+  @@map("fpt_app_configs")
 }
 
-model CustomerOaAssignment {
-  id         String      @id @default(uuid()) @db.Uuid
-  userId     String      @map("user_id") @db.Uuid
-  oaConfigId String      @map("oa_config_id") @db.Uuid
-  assignedAt DateTime    @default(now()) @map("assigned_at")
+model CustomerAppAssignment {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  appConfigId String       @map("app_config_id") @db.Uuid
+  assignedAt  DateTime     @default(now()) @map("assigned_at")
 
-  user     User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  oaConfig FptOaConfig @relation(fields: [oaConfigId], references: [id], onDelete: Cascade)
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appConfig FptAppConfig @relation(fields: [appConfigId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, oaConfigId])
-  @@map("customer_oa_assignments")
+  @@unique([userId, appConfigId])
+  @@map("customer_app_assignments")
 }
 
 model ZnsTemplate {
   id               String          @id @default(uuid()) @db.Uuid
-  fptOaConfigId    String          @map("fpt_oa_config_id") @db.Uuid
+  fptAppConfigId   String          @map("fpt_app_config_id") @db.Uuid
   templateId       Int             @map("template_id")
   templateName     String          @map("template_name") @db.VarChar(500)
   templateTag      String?         @map("template_tag") @db.VarChar(100)
@@ -123,29 +123,29 @@ model ZnsTemplate {
   createdAt        DateTime        @default(now()) @map("created_at")
   updatedAt        DateTime        @updatedAt @map("updated_at")
 
-  fptOaConfig      FptOaConfig     @relation(fields: [fptOaConfigId], references: [id], onDelete: Cascade)
+  fptAppConfig     FptAppConfig    @relation(fields: [fptAppConfigId], references: [id], onDelete: Cascade)
   messages         Message[]
 
-  @@unique([fptOaConfigId, templateId])
+  @@unique([fptAppConfigId, templateId])
   @@map("zns_templates")
 }
 
 model ApiKey {
-  id              String       @id @default(uuid()) @db.Uuid
-  userId          String       @map("user_id") @db.Uuid
-  oaConfigId      String?      @map("oa_config_id") @db.Uuid
-  keyName         String       @map("key_name") @db.VarChar(255)
-  apiKeyHash      String       @map("api_key_hash") @db.VarChar(255)
-  apiKeyEncrypted String?      @map("api_key_encrypted") @db.Text
-  prefix          String       @db.VarChar(10)
-  isActive        Boolean      @default(true) @map("is_active")
-  lastUsedAt      DateTime?    @map("last_used_at")
-  createdAt       DateTime     @default(now()) @map("created_at")
+  id              String        @id @default(uuid()) @db.Uuid
+  userId          String        @map("user_id") @db.Uuid
+  appConfigId     String?       @map("app_config_id") @db.Uuid
+  keyName         String        @map("key_name") @db.VarChar(255)
+  apiKeyHash      String        @map("api_key_hash") @db.VarChar(255)
+  apiKeyEncrypted String?       @map("api_key_encrypted") @db.Text
+  prefix          String        @db.VarChar(10)
+  isActive        Boolean       @default(true) @map("is_active")
+  lastUsedAt      DateTime?     @map("last_used_at")
+  createdAt       DateTime      @default(now()) @map("created_at")
 
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  oaConfig    FptOaConfig? @relation(fields: [oaConfigId], references: [id], onDelete: Cascade)
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  appConfig   FptAppConfig? @relation(fields: [appConfigId], references: [id], onDelete: Cascade)
 
-  @@unique([userId, oaConfigId])
+  @@unique([userId, appConfigId])
   @@map("api_keys")
 }
 
@@ -153,7 +153,7 @@ model Campaign {
   id              String          @id @default(uuid()) @db.Uuid
   userId          String          @map("user_id") @db.Uuid
   name            String          @db.VarChar(500)
-  fptOaConfigId   String          @map("fpt_oa_config_id") @db.Uuid
+  fptAppConfigId  String          @map("fpt_app_config_id") @db.Uuid
   templateId      Int             @map("template_id")
   totalMessages   Int             @default(0) @map("total_messages")
   sentCount       Int             @default(0) @map("sent_count")
@@ -165,7 +165,7 @@ model Campaign {
   updatedAt       DateTime        @updatedAt @map("updated_at")
 
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  fptOaConfig     FptOaConfig     @relation(fields: [fptOaConfigId], references: [id], onDelete: Cascade)
+  fptAppConfig    FptAppConfig    @relation(fields: [fptAppConfigId], references: [id], onDelete: Cascade)
   messages        Message[]
 
   @@map("campaigns")
@@ -175,7 +175,7 @@ model Message {
   id              String        @id @default(uuid()) @db.Uuid
   userId          String        @map("user_id") @db.Uuid
   campaignId      String?       @map("campaign_id") @db.Uuid
-  fptOaConfigId   String        @map("fpt_oa_config_id") @db.Uuid
+  fptAppConfigId  String        @map("fpt_app_config_id") @db.Uuid
   templateId      Int           @map("template_id")
   phone           String        @db.VarChar(20)
   templateData    Json          @map("template_data") @db.JsonB
@@ -192,8 +192,8 @@ model Message {
 
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   campaign        Campaign?     @relation(fields: [campaignId], references: [id], onDelete: SetNull)
-  fptOaConfig     FptOaConfig   @relation(fields: [fptOaConfigId], references: [id], onDelete: Cascade)
-  template        ZnsTemplate?  @relation(fields: [fptOaConfigId, templateId], references: [fptOaConfigId, templateId])
+  fptAppConfig    FptAppConfig  @relation(fields: [fptAppConfigId], references: [id], onDelete: Cascade)
+  template        ZnsTemplate?  @relation(fields: [fptAppConfigId, templateId], references: [fptAppConfigId, templateId])
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([fptMessageId])

@@ -14,9 +14,10 @@ async function send(req, res, next) {
       });
     }
 
-    // Find the active OA config (using API key's assigned OA if present, or user's OAs)
-    const oaWhere = req.oaConfigId
-      ? { id: req.oaConfigId, status: 'ACTIVE' }
+    // Find the active App / OA config (using API key's assigned App if present, or user's Apps)
+    const activeConfigId = req.appConfigId || req.oaConfigId;
+    const oaWhere = activeConfigId
+      ? { id: activeConfigId, status: 'ACTIVE' }
       : {
           status: 'ACTIVE',
           OR: [
@@ -29,9 +30,9 @@ async function send(req, res, next) {
       where: {
         templateId: template_id,
         status: 'ENABLE',
-        fptOaConfig: oaWhere,
+        fptAppConfig: oaWhere,
       },
-      include: { fptOaConfig: { select: { id: true } } },
+      include: { fptAppConfig: { select: { id: true } } },
     });
 
     if (!template) {
@@ -40,7 +41,7 @@ async function send(req, res, next) {
 
     const message = await znsService.queueMessage({
       userId,
-      fptOaConfigId: template.fptOaConfig.id,
+      fptAppConfigId: template.fptAppConfig.id,
       templateId: template_id,
       phone,
       templateData: template_data,
@@ -87,7 +88,7 @@ async function listTemplates(req, res, next) {
     const templates = await prisma.znsTemplate.findMany({
       where: {
         status: 'ENABLE',
-        fptOaConfig: { userId, status: 'ACTIVE' },
+        fptAppConfig: { userId, status: 'ACTIVE' },
       },
       select: {
         templateId: true,
@@ -95,7 +96,7 @@ async function listTemplates(req, res, next) {
         templateTag: true,
         listParams: true,
         status: true,
-        fptOaConfig: { select: { oaName: true } },
+        fptAppConfig: { select: { oaName: true } },
       },
       orderBy: { templateName: 'asc' },
     });
@@ -108,7 +109,7 @@ async function listTemplates(req, res, next) {
         tag: t.templateTag,
         params: t.listParams,
         status: t.status,
-        oa_name: t.fptOaConfig.oaName,
+        oa_name: t.fptAppConfig?.oaName || '',
       })),
     });
   } catch (error) { next(error); }

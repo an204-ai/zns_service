@@ -36,7 +36,7 @@ export default function AdminTemplates() {
             value={oaFilter}
             onChange={e => { setOaFilter(e.target.value); setPage(1); }}
           >
-            <option value="">Tất cả Zalo OA</option>
+            <option value="">Tất cả ứng dụng liên kết</option>
             {oaConfigs?.map(oa => <option key={oa.id} value={oa.id}>{oa.oaName}</option>)}
           </select>
         </div>
@@ -54,7 +54,7 @@ export default function AdminTemplates() {
                     <th style={{ width: 44, textAlign: 'center' }}>#</th>
                     <th style={{ width: '15%', textAlign: 'left' }}>Mã mẫu tin</th>
                     <th style={{ width: '22%', textAlign: 'left' }}>Tên mẫu tin</th>
-                    <th style={{ width: '18%', textAlign: 'left' }}>Zalo OA</th>
+                    <th style={{ width: '18%', textAlign: 'left' }}>Ứng dụng liên kết</th>
                     <th style={{ width: '15%', textAlign: 'center' }}>Phân loại</th>
                     <th style={{ width: '10%', textAlign: 'center' }}>Chất lượng</th>
                     <th style={{ width: '10%', textAlign: 'center' }}>Trạng thái</th>
@@ -73,7 +73,7 @@ export default function AdminTemplates() {
                         {t.templateId}
                       </td>
                       <td className="table-cell-bold">{t.templateName}</td>
-                      <td style={{ fontSize: 12.5, color: '#475569' }}>{t.fptOaConfig?.oaName}</td>
+                      <td style={{ fontSize: 12.5, color: '#475569' }}>{t.fptAppConfig?.oaName || t.fptOaConfig?.oaName}</td>
                       <td style={{ textAlign: 'center' }}>
                         <span className="badge badge-neutral" style={{ fontSize: 11 }}>
                           {t.templateTag || 'Chăm sóc khách hàng'}
@@ -116,7 +116,7 @@ export default function AdminTemplates() {
                           Chưa có mẫu tin nào
                         </div>
                         <p style={{ color: '#64748b', fontSize: 12.5, marginTop: 4 }}>
-                          Chọn OA khác hoặc đồng bộ mẫu tin từ cấu hình OA
+                          Chọn ứng dụng khác hoặc đồng bộ mẫu tin từ quản lý ứng dụng
                         </p>
                       </td>
                     </tr>
@@ -146,7 +146,7 @@ export default function AdminTemplates() {
           isOpen={!!selectedTemplate}
           onClose={() => setSelectedTemplate(null)}
           templateId={selectedTemplate.templateId}
-          oaId={selectedTemplate.fptOaConfigId || selectedTemplate.fptOaConfig?.id}
+          oaId={selectedTemplate.fptAppConfigId || selectedTemplate.fptOaConfigId || selectedTemplate.fptAppConfig?.id || selectedTemplate.fptOaConfig?.id}
           isAdmin={true}
         />
       )}

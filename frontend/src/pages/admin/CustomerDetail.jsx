@@ -91,10 +91,10 @@ export default function AdminCustomerDetail() {
       refetch();
       setShowSystemOaModal(false);
       setSelectedSystemOaId('');
-      toast.success('Đã gán OA Hệ thống và tự động cấp API Key cho khách hàng!');
+      toast.success('Đã gán ứng dụng hệ thống và tự động cấp API Key cho khách hàng!');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi gán OA Hệ thống');
+      toast.error(err.response?.data?.message || 'Lỗi khi gán ứng dụng hệ thống');
     },
   });
 
@@ -103,10 +103,10 @@ export default function AdminCustomerDetail() {
     mutationFn: (oaId) => api.delete(`/admin/customers/${id}/assign-system-oa/${oaId}`),
     onSuccess: () => {
       refetch();
-      toast.success('Đã gỡ OA Hệ thống khỏi khách hàng');
+      toast.success('Đã gỡ ứng dụng hệ thống khỏi khách hàng');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi gỡ OA Hệ thống');
+      toast.error(err.response?.data?.message || 'Lỗi khi gỡ ứng dụng hệ thống');
     },
   });
 
@@ -117,10 +117,10 @@ export default function AdminCustomerDetail() {
       refetch();
       setShowPrivateOaModal(false);
       setPrivateOaForm({ oaName: '', fptAppId: '', fptSecretKey: '' });
-      toast.success('Tạo OA riêng thành công và đã tự động cấp API Key!');
+      toast.success('Tạo ứng dụng riêng thành công và đã tự động cấp API Key!');
     },
     onError: (err) => {
-      const msg = err.response?.data?.message || 'Không thể tạo OA riêng. Vui lòng kiểm tra lại FPT App ID và Secret Key';
+      const msg = err.response?.data?.message || 'Không thể tạo ứng dụng riêng. Vui lòng kiểm tra lại FPT App ID và Secret Key';
       setPrivateOaError(msg);
       toast.error(msg);
     },
@@ -131,10 +131,10 @@ export default function AdminCustomerDetail() {
     mutationFn: (oaId) => api.delete(`/admin/customers/${id}/private-oa/${oaId}`),
     onSuccess: () => {
       refetch();
-      toast.success('Đã xóa OA riêng khỏi khách hàng');
+      toast.success('Đã xóa ứng dụng riêng khỏi khách hàng');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi khi xóa OA riêng');
+      toast.error(err.response?.data?.message || 'Lỗi khi xóa ứng dụng riêng');
     },
   });
 
@@ -144,7 +144,7 @@ export default function AdminCustomerDetail() {
     onSuccess: (r) => {
       refetch();
       setNewlyGeneratedKey(r.data.data.apiKey);
-      toast.success('Đã cấp lại API Key ngẫu nhiên mới cho OA này!');
+      toast.success('Đã cấp lại API Key ngẫu nhiên mới cho ứng dụng này!');
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Lỗi cấp lại API Key');
@@ -311,7 +311,7 @@ export default function AdminCustomerDetail() {
       {/* Section: Zalo OAs & Attached API Keys */}
       <div className="card">
         <div className="card-header" style={{ flexWrap: 'wrap', gap: 'var(--spacing-md)' }}>
-          <span className="card-header-title">Danh sách Zalo OA và API Key ({customer.allOAs?.length || 0})</span>
+          <span className="card-header-title">Danh sách Ứng dụng liên kết và API Key ({customer.allOAs?.length || 0})</span>
 
           <div style={{ display: 'flex', gap: 8 }}>
             <button
@@ -321,7 +321,7 @@ export default function AdminCustomerDetail() {
               onClick={() => setShowSystemOaModal(true)}
             >
               <ShieldCheck size={16} color="#2563eb" weight="fill" />
-              Gán OA hệ thống
+              Gán ứng dụng hệ thống
             </button>
 
             <button
@@ -335,7 +335,7 @@ export default function AdminCustomerDetail() {
               }}
             >
               <Plus size={16} weight="bold" />
-              Thêm OA riêng
+              Thêm ứng dụng riêng
             </button>
           </div>
         </div>
@@ -344,10 +344,10 @@ export default function AdminCustomerDetail() {
           <table className="table">
             <thead>
               <tr>
-                <th>Zalo OA</th>
-                <th>Loại OA</th>
+                <th>Ứng dụng liên kết</th>
+                <th>Loại ứng dụng</th>
                 <th>App ID</th>
-                <th>API Key của OA</th>
+                <th>API Key của ứng dụng</th>
                 <th>Mẫu tin</th>
                 <th>Trạng thái</th>
                 <th style={{ textAlign: 'center' }}>Thao tác</th>
@@ -368,9 +368,9 @@ export default function AdminCustomerDetail() {
                   </td>
                   <td>
                     {oa.type === 'SYSTEM' ? (
-                      <span className="badge badge-primary">OA Hệ thống</span>
+                      <span className="badge badge-primary">Ứng dụng hệ thống</span>
                     ) : (
-                      <span className="badge badge-success">OA Riêng</span>
+                      <span className="badge badge-success">Ứng dụng riêng</span>
                     )}
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>
@@ -395,10 +395,10 @@ export default function AdminCustomerDetail() {
                         <button
                           type="button"
                           className="btn btn-sm btn-secondary"
-                          title="Cấp lại API Key ngẫu nhiên mới cho OA này"
+                          title="Cấp lại API Key ngẫu nhiên mới cho ứng dụng này"
                           disabled={regenerateKeyMutation.isPending}
                           onClick={() => {
-                            if (window.confirm(`Cấp lại mã API Key mới cho OA "${oa.oaName}"? Mã cũ sẽ lập tức bị vô hiệu hóa.`)) {
+                            if (window.confirm(`Cấp lại mã API Key mới cho ứng dụng "${oa.oaName}"? Mã cũ sẽ lập tức bị vô hiệu hóa.`)) {
                               regenerateKeyMutation.mutate(oa.id);
                             }
                           }}
@@ -437,14 +437,14 @@ export default function AdminCustomerDetail() {
                       <button
                         type="button"
                         className="btn btn-sm btn-danger"
-                        title={oa.type === 'SYSTEM' ? 'Gỡ OA Hệ thống' : 'Xóa OA riêng'}
+                        title={oa.type === 'SYSTEM' ? 'Gỡ ứng dụng hệ thống' : 'Xóa ứng dụng riêng'}
                         onClick={() => {
                           if (oa.type === 'SYSTEM') {
-                            if (window.confirm(`Bạn có chắc muốn gỡ OA Hệ thống "${oa.oaName}" khỏi khách hàng này?`)) {
+                            if (window.confirm(`Bạn có chắc muốn gỡ ứng dụng hệ thống "${oa.oaName}" khỏi khách hàng này?`)) {
                               unassignSystemMutation.mutate(oa.id);
                             }
                           } else {
-                            if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn OA riêng "${oa.oaName}" khỏi khách hàng này?`)) {
+                            if (window.confirm(`Bạn có chắc muốn xóa vĩnh viễn ứng dụng riêng "${oa.oaName}" khỏi khách hàng này?`)) {
                               deletePrivateMutation.mutate(oa.id);
                             }
                           }
@@ -460,9 +460,9 @@ export default function AdminCustomerDetail() {
               {!customer.allOAs?.length && (
                 <tr>
                   <td colSpan={7} className="empty-state">
-                    <div className="empty-state-title">Khách hàng chưa có Zalo OA nào</div>
+                    <div className="empty-state-title">Khách hàng chưa có ứng dụng liên kết nào</div>
                     <div className="empty-state-text">
-                      Bấm vào "Gán OA hệ thống" hoặc "Thêm OA riêng" ở trên để kết nối OA cho khách hàng
+                      Bấm vào "Gán ứng dụng hệ thống" hoặc "Thêm ứng dụng riêng" ở trên để kết nối cho khách hàng
                     </div>
                   </td>
                 </tr>
@@ -479,7 +479,7 @@ export default function AdminCustomerDetail() {
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <ShieldCheck size={22} color="#2563eb" weight="fill" />
-                <h2 className="modal-title">Gán OA Hệ thống cho khách hàng</h2>
+                <h2 className="modal-title">Gán ứng dụng hệ thống cho khách hàng</h2>
               </div>
               <button type="button" className="modal-close" onClick={() => setShowSystemOaModal(false)}>
                 <X size={18} />
@@ -488,17 +488,17 @@ export default function AdminCustomerDetail() {
 
             <div className="modal-body">
               <p style={{ fontSize: 'var(--font-size-sm)', color: 'var(--text-secondary)', marginBottom: 'var(--spacing-md)' }}>
-                Chọn một OA Hệ thống đang hoạt động để cấp quyền gửi tin cho <strong>{customer.fullName}</strong>:
+                Chọn một ứng dụng hệ thống đang hoạt động để cấp quyền gửi tin cho <strong>{customer.fullName}</strong>:
               </p>
 
               <div className="form-group">
-                <label className="form-label">Chọn Zalo OA Hệ thống *</label>
+                <label className="form-label">Chọn ứng dụng hệ thống *</label>
                 <select
                   className="form-input"
                   value={selectedSystemOaId}
                   onChange={e => setSelectedSystemOaId(e.target.value)}
                 >
-                  <option value="">-- Chọn OA Hệ thống --</option>
+                  <option value="">-- Chọn ứng dụng hệ thống --</option>
                   {availableSystemOAs.map(oa => (
                     <option key={oa.id} value={oa.id}>
                       {oa.oaName} (Mã OA: {oa.oaId || 'N/A'}) - {oa._count?.templates || 0} mẫu tin
@@ -507,7 +507,7 @@ export default function AdminCustomerDetail() {
                 </select>
                 {!availableSystemOAs.length && (
                   <span style={{ fontSize: 'var(--font-size-xs)', color: '#ea580c', marginTop: 4, display: 'block' }}>
-                    Không có OA Hệ thống nào khả dụng hoặc tất cả OA Hệ thống đã được gán cho khách này.
+                    Không có ứng dụng hệ thống nào khả dụng hoặc tất cả ứng dụng hệ thống đã được gán cho khách này.
                   </span>
                 )}
               </div>
@@ -523,21 +523,21 @@ export default function AdminCustomerDetail() {
                 disabled={!selectedSystemOaId || assignSystemMutation.isPending}
                 onClick={() => assignSystemMutation.mutate(selectedSystemOaId)}
               >
-                {assignSystemMutation.isPending ? 'Đang gán...' : 'Xác nhận gán OA'}
+                {assignSystemMutation.isPending ? 'Đang gán...' : 'Xác nhận gán ứng dụng'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Modal: Thêm OA Riêng */}
+      {/* Modal: Thêm Ứng dụng Riêng */}
       {showPrivateOaModal && (
         <div className="modal-overlay" onClick={() => setShowPrivateOaModal(false)}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <Broadcast size={22} color="#10b981" weight="fill" />
-                <h2 className="modal-title">Thêm OA riêng cho khách hàng</h2>
+                <h2 className="modal-title">Thêm ứng dụng riêng cho khách hàng</h2>
               </div>
               <button type="button" className="modal-close" onClick={() => setShowPrivateOaModal(false)}>
                 <X size={18} />
@@ -571,10 +571,10 @@ export default function AdminCustomerDetail() {
                 )}
 
                 <div className="form-group">
-                  <label className="form-label">Tên gợi nhớ OA</label>
+                  <label className="form-label">Tên gợi nhớ ứng dụng</label>
                   <input
                     className="form-input"
-                    placeholder={`Ví dụ: OA ${customer.companyName || customer.fullName}`}
+                    placeholder={`Ví dụ: Ứng dụng ${customer.companyName || customer.fullName}`}
                     value={privateOaForm.oaName}
                     onChange={e => setPrivateOaForm({ ...privateOaForm, oaName: e.target.value })}
                   />

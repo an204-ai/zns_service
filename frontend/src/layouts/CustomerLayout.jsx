@@ -25,7 +25,7 @@ const navGroups = [
     title: 'Tài khoản của tôi',
     items: [
       { to: '/customer', label: 'Tổng quan', icon: SquaresFour, end: true },
-      { to: '/customer/oa-info', label: 'Quản lý OA & API Key', icon: IdentificationBadge },
+      { to: '/customer/oa-info', label: 'Ứng dụng liên kết & API Key', icon: IdentificationBadge },
       { to: '/customer/send-message', label: 'Gửi tin thử nghiệm', icon: PaperPlaneTilt },
       { to: '/customer/campaigns', label: 'Chiến dịch gửi tin', icon: Megaphone },
       { to: '/customer/messages', label: 'Lịch sử gửi tin', icon: ClockCounterClockwise },

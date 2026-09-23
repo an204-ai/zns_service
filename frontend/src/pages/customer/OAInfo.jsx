@@ -98,7 +98,7 @@ export default function CustomerOAInfo() {
             }}
           >
             <ArrowLeft size={15} weight="bold" />
-            Quay lại danh sách OA
+            Quay lại danh sách ứng dụng liên kết
           </button>
 
           <div
@@ -116,9 +116,9 @@ export default function CustomerOAInfo() {
                   {selectedOa.oaName}
                 </h1>
                 {selectedOa.isSystem ? (
-                  <span className="badge badge-primary">OA Hệ thống</span>
+                  <span className="badge badge-primary">Ứng dụng hệ thống</span>
                 ) : (
-                  <span className="badge badge-success">OA Riêng</span>
+                  <span className="badge badge-success">Ứng dụng riêng</span>
                 )}
                 <span className="badge-active-pill">Đang hoạt động</span>
               </div>
@@ -444,7 +444,7 @@ export default function CustomerOAInfo() {
                     <td colSpan={7} className="empty-state">
                       <div className="empty-state-title">Chưa có mẫu tin nào</div>
                       <div className="empty-state-text">
-                        Zalo OA này chưa có mẫu tin ZNS nào được đồng bộ từ FPT Telecom
+                        Ứng dụng liên kết này chưa có mẫu tin ZNS nào được đồng bộ từ FPT Telecom
                       </div>
                     </td>
                   </tr>
@@ -470,7 +470,7 @@ export default function CustomerOAInfo() {
 
 
   // ==========================================
-  // VIEW 2: BẢNG DANH SÁCH OA CỦA TÀI KHOẢN
+  // VIEW 2: BẢNG DANH SÁCH ỨNG DỤNG LIÊN KẾT
   // ==========================================
   const filteredOas = (oaConfigs || []).filter((oa) => {
     if (!searchTerm.trim()) return true;
@@ -488,9 +488,9 @@ export default function CustomerOAInfo() {
     <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
       {/* Header */}
       <div className="console-section-header">
-        <h1 className="console-section-title">Quản lý Zalo OA & API Key</h1>
+        <h1 className="console-section-title">Ứng dụng liên kết & API Key</h1>
         <p className="console-section-desc">
-          Danh sách các Zalo OA được cấp quyền cho tài khoản và khóa bảo mật API Key gửi tin ZNS
+          Danh sách các ứng dụng được cấp quyền cho tài khoản và khóa bảo mật API Key gửi tin ZNS
         </p>
       </div>
 
@@ -502,7 +502,7 @@ export default function CustomerOAInfo() {
             <input
               type="text"
               className="console-search-input"
-              placeholder="Tìm kiếm OA..."
+              placeholder="Tìm kiếm ứng dụng..."
               value={searchTerm}
               onChange={(e) => {
                 setSearchTerm(e.target.value);
@@ -517,16 +517,16 @@ export default function CustomerOAInfo() {
       <div className="console-card-table">
         {!oaConfigs?.length ? (
           <div className="empty-state">
-            <div className="empty-state-title">Chưa có Zalo OA nào được liên kết</div>
+            <div className="empty-state-title">Chưa có ứng dụng nào được liên kết</div>
             <div className="empty-state-text">
-              Vui lòng liên hệ ban quản trị hệ thống để được gán Zalo OA phục vụ gửi tin ZNS
+              Vui lòng liên hệ ban quản trị hệ thống để được gán ứng dụng phục vụ gửi tin ZNS
             </div>
           </div>
         ) : !filteredOas.length ? (
           <div className="empty-state">
-            <div className="empty-state-title">Không tìm thấy Zalo OA phù hợp</div>
+            <div className="empty-state-title">Không tìm thấy ứng dụng phù hợp</div>
             <div className="empty-state-text">
-              Thử tìm kiếm với từ khóa khác như tên OA hoặc mã OA
+              Thử tìm kiếm với từ khóa khác như tên ứng dụng hoặc mã OA
             </div>
           </div>
         ) : (
@@ -536,9 +536,9 @@ export default function CustomerOAInfo() {
                 <thead>
                   <tr>
                     <th style={{ width: 44, textAlign: 'center' }}>#</th>
-                    <th style={{ width: '26%', textAlign: 'left' }}>Tên Zalo OA</th>
+                    <th style={{ width: '26%', textAlign: 'left' }}>Ứng dụng liên kết</th>
                     <th style={{ width: '15%', textAlign: 'center' }}>Trạng thái</th>
-                    <th style={{ width: '15%', textAlign: 'center' }}>Loại OA</th>
+                    <th style={{ width: '15%', textAlign: 'center' }}>Loại ứng dụng</th>
                     <th style={{ width: '24%', textAlign: 'left' }}>Khóa API Key</th>
                     <th style={{ width: '10%', textAlign: 'center' }}>Mẫu tin</th>
                     <th style={{ width: '10%', textAlign: 'right' }}>Thao tác</th>
@@ -562,7 +562,7 @@ export default function CustomerOAInfo() {
                         {/* Cột 1: STT # */}
                         <td className="table-col-index">{rowIndex}</td>
 
-                        {/* Cột 2: Tên Zalo OA */}
+                        {/* Cột 2: Tên ứng dụng */}
                         <td>
                           <div>
                             <span
@@ -586,12 +586,12 @@ export default function CustomerOAInfo() {
                           <span className="badge-active-pill">Đang hoạt động</span>
                         </td>
 
-                        {/* Cột 4: Loại OA */}
+                        {/* Cột 4: Loại ứng dụng */}
                         <td>
                           {oa.isSystem ? (
-                            <span className="badge badge-primary">OA Hệ thống</span>
+                            <span className="badge badge-primary">Ứng dụng hệ thống</span>
                           ) : (
-                            <span className="badge badge-success">OA Riêng</span>
+                            <span className="badge badge-success">Ứng dụng riêng</span>
                           )}
                         </td>
 

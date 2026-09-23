@@ -110,7 +110,7 @@ async function getCustomers({ search, status, page = 1, limit = 20 }) {
         phone: true,
         status: true,
         createdAt: true,
-        oaConfigs: {
+        appConfigs: {
           select: {
             id: true,
             oaName: true,
@@ -123,11 +123,11 @@ async function getCustomers({ search, status, page = 1, limit = 20 }) {
           },
           orderBy: { createdAt: 'desc' },
         },
-        systemOaAssignments: {
+        systemAppAssignments: {
           select: {
             id: true,
             assignedAt: true,
-            oaConfig: {
+            appConfig: {
               select: {
                 id: true,
                 oaName: true,
@@ -141,7 +141,7 @@ async function getCustomers({ search, status, page = 1, limit = 20 }) {
             },
           },
         },
-        _count: { select: { messages: true, oaConfigs: true, apiKeys: true, systemOaAssignments: true } },
+        _count: { select: { messages: true, appConfigs: true, apiKeys: true, systemAppAssignments: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
@@ -150,7 +150,17 @@ async function getCustomers({ search, status, page = 1, limit = 20 }) {
     prisma.user.count({ where }),
   ]);
 
-  return { data, total, page, totalPages: Math.ceil(total / limit) };
+  // Map both appConfigs and oaConfigs for backward and forward compatibility
+  const formattedData = data.map((u) => ({
+    ...u,
+    oaConfigs: u.appConfigs,
+    systemOaAssignments: (u.systemAppAssignments || []).map((s) => ({
+      ...s,
+      oaConfig: s.appConfig,
+    })),
+  }));
+
+  return { data: formattedData, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
@@ -168,7 +178,7 @@ async function getCustomerById(id) {
       status: true,
       createdAt: true,
       updatedAt: true,
-      oaConfigs: {
+      appConfigs: {
         where: { isSystem: false },
         select: {
           id: true,
@@ -186,11 +196,11 @@ async function getCustomerById(id) {
         },
         orderBy: { createdAt: 'desc' },
       },
-      systemOaAssignments: {
+      systemAppAssignments: {
         select: {
           id: true,
           assignedAt: true,
-          oaConfig: {
+          appConfig: {
             select: {
               id: true,
               oaName: true,
@@ -217,8 +227,10 @@ async function getCustomerById(id) {
 
   const apiKeyService = require('./apiKeyService');
   const allOAs = [];
+  const privateApps = customer.appConfigs || customer.oaConfigs || [];
+  const systemApps = customer.systemAppAssignments || customer.systemOaAssignments || [];
 
-  for (const oa of (customer.oaConfigs || [])) {
+  for (const oa of privateApps) {
     let key = oa.apiKeys?.[0];
     if (!key) {
       key = await apiKeyService.getOrCreateApiKeyForOA(id, oa.id, `Khóa API - ${oa.oaName}`);
@@ -231,13 +243,15 @@ async function getCustomerById(id) {
     });
   }
 
-  for (const a of (customer.systemOaAssignments || [])) {
-    let key = a.oaConfig?.apiKeys?.[0];
+  for (const a of systemApps) {
+    const config = a.appConfig || a.oaConfig;
+    if (!config) continue;
+    let key = config.apiKeys?.[0];
     if (!key) {
-      key = await apiKeyService.getOrCreateApiKeyForOA(id, a.oaConfig.id, `Khóa API - ${a.oaConfig.oaName}`);
+      key = await apiKeyService.getOrCreateApiKeyForOA(id, config.id, `Khóa API - ${config.oaName}`);
     }
     allOAs.push({
-      ...a.oaConfig,
+      ...config,
       type: 'SYSTEM',
       assignmentId: a.id,
       assignedAt: a.assignedAt,
@@ -247,6 +261,10 @@ async function getCustomerById(id) {
 
   return {
     ...customer,
+    oaConfigs: privateApps,
+    appConfigs: privateApps,
+    systemOaAssignments: systemApps,
+    systemAppAssignments: systemApps,
     allOAs,
   };
 }
@@ -315,8 +333,8 @@ async function deleteCustomer(id) {
   }
 
   return prisma.$transaction(async (tx) => {
-    // 1. Delete system OA assignments for this customer
-    await tx.customerOaAssignment.deleteMany({
+    // 1. Delete system application assignments for this customer
+    await (tx.customerAppAssignment || tx.customerOaAssignment).deleteMany({
       where: { userId: id },
     });
 
@@ -335,28 +353,28 @@ async function deleteCustomer(id) {
       where: { userId: id },
     });
 
-    // 5. Delete private OAs owned by this customer
-    const userOas = await tx.fptOaConfig.findMany({
+    // 5. Delete private apps owned by this customer
+    const userApps = await (tx.fptAppConfig || tx.fptOaConfig).findMany({
       where: { userId: id },
       select: { id: true },
     });
-    const oaIds = userOas.map((o) => o.id);
+    const appIds = userApps.map((o) => o.id);
 
-    if (oaIds.length > 0) {
-      await tx.customerOaAssignment.deleteMany({
-        where: { oaConfigId: { in: oaIds } },
+    if (appIds.length > 0) {
+      await (tx.customerAppAssignment || tx.customerOaAssignment).deleteMany({
+        where: { appConfigId: { in: appIds } },
       });
       await tx.message.deleteMany({
-        where: { fptOaConfigId: { in: oaIds } },
+        where: { fptAppConfigId: { in: appIds } },
       });
       await tx.campaign.deleteMany({
-        where: { fptOaConfigId: { in: oaIds } },
+        where: { fptAppConfigId: { in: appIds } },
       });
       await tx.znsTemplate.deleteMany({
-        where: { fptOaConfigId: { in: oaIds } },
+        where: { fptAppConfigId: { in: appIds } },
       });
-      await tx.fptOaConfig.deleteMany({
-        where: { id: { in: oaIds } },
+      await (tx.fptAppConfig || tx.fptOaConfig).deleteMany({
+        where: { id: { in: appIds } },
       });
     }
 
@@ -369,7 +387,7 @@ async function deleteCustomer(id) {
 }
 
 /**
- * Create a private OA for a customer
+ * Create a private OA / App for a customer
  */
 async function createCustomerPrivateOA(userId, { oaName, fptAppId, fptSecretKey }) {
   const oa = await oaConfigService.createOAConfig({
@@ -383,20 +401,24 @@ async function createCustomerPrivateOA(userId, { oaName, fptAppId, fptSecretKey 
 }
 
 /**
- * Delete a private OA of a customer
+ * Delete a private app of a customer
  */
 async function deleteCustomerPrivateOA(userId, oaConfigId) {
-  const oa = await prisma.fptOaConfig.findFirst({
+  const model = prisma.fptAppConfig || prisma.fptOaConfig;
+  const oa = await model.findFirst({
     where: { id: oaConfigId, userId, isSystem: false },
   });
-  if (!oa) throw Object.assign(new Error('Cấu hình OA riêng không tồn tại hoặc không thuộc khách hàng này'), { statusCode: 404 });
+  if (!oa) throw Object.assign(new Error('Ứng dụng liên kết riêng không tồn tại hoặc không thuộc khách hàng này'), { statusCode: 404 });
 
   return prisma.$transaction(async (tx) => {
-    await tx.apiKey.deleteMany({ where: { oaConfigId } });
-    await tx.message.deleteMany({ where: { fptOaConfigId: oaConfigId } });
-    await tx.campaign.deleteMany({ where: { fptOaConfigId: oaConfigId } });
-    await tx.znsTemplate.deleteMany({ where: { fptOaConfigId: oaConfigId } });
-    return tx.fptOaConfig.delete({ where: { id: oaConfigId } });
+    const appAssignModel = tx.customerAppAssignment || tx.customerOaAssignment;
+    const appModel = tx.fptAppConfig || tx.fptOaConfig;
+    await tx.apiKey.deleteMany({ where: { appConfigId: oaConfigId } });
+    await tx.message.deleteMany({ where: { fptAppConfigId: oaConfigId } });
+    await tx.campaign.deleteMany({ where: { fptAppConfigId: oaConfigId } });
+    await tx.znsTemplate.deleteMany({ where: { fptAppConfigId: oaConfigId } });
+    await appAssignModel.deleteMany({ where: { appConfigId: oaConfigId } });
+    return appModel.delete({ where: { id: oaConfigId } });
   });
 }
 

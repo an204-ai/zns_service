@@ -106,10 +106,10 @@ export default function AdminCustomers() {
       queryClient.invalidateQueries(['admin-customers']);
       setOaTarget(null);
       setOaForm({ oaName: '', fptAppId: '', fptSecretKey: '' });
-      toast.success('Gán cấu hình OA riêng thành công! Đang tự động đồng bộ mẫu tin.');
+      toast.success('Gán ứng dụng liên kết riêng thành công! Đang tự động đồng bộ mẫu tin.');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi gán cấu hình OA');
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi gán ứng dụng liên kết');
     },
   });
 
@@ -117,12 +117,12 @@ export default function AdminCustomers() {
     mutationFn: ({ userId, oaConfigId }) => api.post(`/admin/customers/${userId}/assign-system-oa`, { oaConfigId }),
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-customers']);
-      toast.success('Gán OA hệ thống cho khách hàng thành công!');
+      toast.success('Gán ứng dụng hệ thống cho khách hàng thành công!');
       setOaTarget(null);
       setSelectedSystemOaId('');
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi gán OA hệ thống');
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi gán ứng dụng hệ thống');
     },
   });
 
@@ -130,11 +130,11 @@ export default function AdminCustomers() {
     mutationFn: ({ userId, oaId }) => api.delete(`/admin/customers/${userId}/assign-system-oa/${oaId}`),
     onSuccess: () => {
       queryClient.invalidateQueries(['admin-customers']);
-      toast.success('Đã hủy gán OA hệ thống khỏi khách hàng');
+      toast.success('Đã hủy gán ứng dụng hệ thống khỏi khách hàng');
       setOaTarget(null);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi hủy gán OA hệ thống');
+      toast.error(err.response?.data?.message || 'Có lỗi xảy ra khi hủy gán ứng dụng hệ thống');
     },
   });
 
@@ -282,16 +282,18 @@ export default function AdminCustomers() {
                     <th style={{ width: '24%' }}>Tên consumer <span className="th-sort">⇅</span></th>
                     <th style={{ width: '15%' }}>Trạng thái <span className="th-sort">⇅</span></th>
                     <th style={{ width: '22%' }}>Liên hệ <span className="th-sort">⇅</span></th>
-                    <th style={{ width: '17%' }}>Cấu hình OA <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '17%' }}>Ứng dụng liên kết <span className="th-sort">⇅</span></th>
                     <th style={{ width: '10%', textAlign: 'center' }}>Tổng Txn <span className="th-sort">⇅</span></th>
                     <th style={{ width: '12%', textAlign: 'center' }}>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data?.data?.map((c, idx) => {
-                    const hasPrivateOA = c.oaConfigs && c.oaConfigs.length > 0;
-                    const hasSystemOA = c.systemOaAssignments && c.systemOaAssignments.length > 0;
-                    const hasAnyOA = hasPrivateOA || hasSystemOA;
+                    const userApps = c.appConfigs || c.oaConfigs || [];
+                    const systemApps = c.systemAppAssignments || c.systemOaAssignments || [];
+                    const hasPrivateApp = userApps.length > 0;
+                    const hasSystemApp = systemApps.length > 0;
+                    const hasAnyApp = hasPrivateApp || hasSystemApp;
                     const rowIndex = (page - 1) * limit + idx + 1;
 
                     return (
@@ -346,16 +348,16 @@ export default function AdminCustomers() {
                         </td>
 
                         <td onClick={(e) => e.stopPropagation()}>
-                          {hasAnyOA ? (
+                          {hasAnyApp ? (
                             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5 }}>
-                              {hasPrivateOA && (
+                              {hasPrivateApp && (
                                 <span className="badge badge-success" style={{ fontSize: 11, fontWeight: 500 }}>
-                                  OA Riêng ({c.oaConfigs.length})
+                                  Ứng dụng riêng ({userApps.length})
                                 </span>
                               )}
-                              {hasSystemOA && (
+                              {hasSystemApp && (
                                 <span className="badge badge-primary" style={{ fontSize: 11, fontWeight: 500 }}>
-                                  Hệ thống ({c.systemOaAssignments.length})
+                                  Ứng dụng hệ thống ({systemApps.length})
                                 </span>
                               )}
                             </div>
@@ -369,13 +371,13 @@ export default function AdminCustomers() {
                                 setOaModalTab('SYSTEM');
                                 setSelectedSystemOaId('');
                                 setOaForm({
-                                  oaName: `OA ${c.companyName || c.fullName}`,
+                                  oaName: `Ứng dụng ${c.companyName || c.fullName}`,
                                   fptAppId: '',
                                   fptSecretKey: '',
                                 });
                               }}
                             >
-                              + Gán OA
+                              + Gán ứng dụng
                             </button>
                           )}
                         </td>
@@ -559,10 +561,10 @@ export default function AdminCustomers() {
                   }}
                 >
                   <label style={{ display: 'block', marginBottom: 8, fontWeight: 600, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                    Cấu hình OA Zalo
+                    Ứng dụng liên kết
                   </label>
 
-                  {/* 3 Lựa chọn: Dùng OA Hệ thống | Cấu hình OA Riêng | Chưa gán OA */}
+                  {/* 3 Lựa chọn: Dùng Ứng dụng Hệ thống | Ứng dụng Riêng | Chưa gán ứng dụng */}
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 'var(--spacing-md)' }}>
                     <button
                       type="button"
@@ -584,7 +586,7 @@ export default function AdminCustomers() {
                       }}
                     >
                       <ShieldCheck size={16} weight={form.oaType === 'SYSTEM' ? 'fill' : 'regular'} />
-                      OA Hệ thống
+                      Ứng dụng hệ thống
                     </button>
 
                     <button
@@ -607,7 +609,7 @@ export default function AdminCustomers() {
                       }}
                     >
                       <Broadcast size={16} weight={form.oaType === 'PRIVATE' ? 'fill' : 'regular'} />
-                      OA Riêng
+                      Ứng dụng riêng
                     </button>
 
                     <button
@@ -629,7 +631,7 @@ export default function AdminCustomers() {
                         transition: 'all 0.15s ease',
                       }}
                     >
-                      Chưa gán OA
+                      Chưa gán ứng dụng
                     </button>
                   </div>
 
@@ -638,14 +640,14 @@ export default function AdminCustomers() {
                     <div>
                       {activeSystemOAs.length > 0 ? (
                         <div className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontWeight: 500 }}>Chọn OA hệ thống *</label>
+                          <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng hệ thống *</label>
                           <select
                             className="form-select"
                             value={form.systemOaId}
                             onChange={e => setForm({ ...form, systemOaId: e.target.value })}
                             required={form.oaType === 'SYSTEM'}
                           >
-                            <option value="">-- Chọn OA hệ thống đang hoạt động --</option>
+                            <option value="">-- Chọn ứng dụng hệ thống đang hoạt động --</option>
                             {activeSystemOAs.map(oa => (
                               <option key={oa.id} value={oa.id}>
                                 {oa.oaName} ({oa._count?.templates || 0} mẫu tin)
@@ -655,7 +657,7 @@ export default function AdminCustomers() {
                         </div>
                       ) : (
                         <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--color-warning)', padding: '8px 12px', background: 'var(--color-warning-bg)', borderRadius: 'var(--border-radius-sm)' }}>
-                          Chưa có OA hệ thống nào hoạt động. Vui lòng tạo OA hệ thống trước hoặc chọn Cấu hình OA riêng.
+                          Chưa có ứng dụng hệ thống nào hoạt động. Vui lòng tạo ứng dụng hệ thống trước hoặc chọn Ứng dụng liên kết riêng.
                         </div>
                       )}
                     </div>
@@ -664,10 +666,10 @@ export default function AdminCustomers() {
                   {form.oaType === 'PRIVATE' && (
                     <div>
                       <div className="form-group" style={{ marginBottom: 'var(--spacing-sm)' }}>
-                        <label className="form-label" style={{ fontWeight: 500 }}>Tên gợi nhớ OA *</label>
+                        <label className="form-label" style={{ fontWeight: 500 }}>Tên gợi nhớ ứng dụng *</label>
                         <input
                           className="form-input"
-                          placeholder="VD: OA Khách hàng ABC"
+                          placeholder="VD: Ứng dụng Khách hàng ABC"
                           value={form.oaName}
                           onChange={e => setForm({ ...form, oaName: e.target.value })}
                           required={form.oaType === 'PRIVATE'}
@@ -704,7 +706,7 @@ export default function AdminCustomers() {
 
                   {form.oaType === 'NONE' && (
                     <div style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                      Tài khoản sẽ được tạo mà chưa có OA. Bạn có thể gán OA hệ thống hoặc kết nối OA riêng bất kỳ lúc nào tại danh sách khách hàng.
+                      Tài khoản sẽ được tạo mà chưa có ứng dụng liên kết. Bạn có thể gán ứng dụng hệ thống hoặc kết nối ứng dụng riêng bất kỳ lúc nào tại danh sách khách hàng.
                     </div>
                   )}
                 </div>
@@ -736,12 +738,12 @@ export default function AdminCustomers() {
             <div className="modal-header">
               <div className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
                 <Broadcast size={20} color="var(--color-primary)" />
-                Cấu hình OA cho {oaTarget.fullName}
+                Ứng dụng liên kết cho {oaTarget.fullName}
               </div>
               <button className="modal-close" onClick={() => setOaTarget(null)}>✕</button>
             </div>
 
-            {/* Segmented Tabs: OA Hệ thống vs OA Riêng */}
+            {/* Segmented Tabs: Ứng dụng Hệ thống vs Ứng dụng Riêng */}
             <div style={{ display: 'flex', gap: 8, padding: 'var(--spacing-md) var(--spacing-lg) 0', flexShrink: 0 }}>
               <button
                 type="button"
@@ -763,7 +765,7 @@ export default function AdminCustomers() {
                 }}
               >
                 <ShieldCheck size={16} weight={oaModalTab === 'SYSTEM' ? 'fill' : 'regular'} />
-                Gán OA Hệ thống
+                Ứng dụng hệ thống
               </button>
 
               <button
@@ -786,22 +788,22 @@ export default function AdminCustomers() {
                 }}
               >
                 <Broadcast size={16} />
-                Cấu hình OA Riêng
+                Ứng dụng liên kết riêng
               </button>
             </div>
 
-            {/* TAB 1: Gán OA Hệ thống */}
+            {/* TAB 1: Gán Ứng dụng Hệ thống */}
             {oaModalTab === 'SYSTEM' && (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 <div className="modal-body">
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 500 }}>Chọn OA Hệ thống cần gán *</label>
+                    <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng hệ thống cần gán *</label>
                     <select
                       className="form-select"
                       value={selectedSystemOaId}
                       onChange={e => setSelectedSystemOaId(e.target.value)}
                     >
-                      <option value="">-- Chọn OA Hệ thống đang hoạt động --</option>
+                      <option value="">-- Chọn ứng dụng hệ thống đang hoạt động --</option>
                       {systemOAs?.filter(s => s.status === 'ACTIVE').map(s => (
                         <option key={s.id} value={s.id}>
                           {s.oaName} ({s._count?.templates || 0} mẫu tin)
@@ -818,52 +820,55 @@ export default function AdminCustomers() {
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500, width: '100%', justifyContent: 'center' }}
                   >
                     <CheckCircle size={16} />
-                    {assignSystemOaMutation.isPending ? 'Đang gán OA...' : 'Gán OA Hệ thống này cho khách hàng'}
+                    {assignSystemOaMutation.isPending ? 'Đang gán ứng dụng...' : 'Gán ứng dụng hệ thống này cho khách hàng'}
                   </button>
 
-                  {/* Danh sách OA Hệ thống đã gán */}
-                  {oaTarget.systemOaAssignments && oaTarget.systemOaAssignments.length > 0 && (
+                  {/* Danh sách Ứng dụng Hệ thống đã gán */}
+                  {((oaTarget.systemAppAssignments && oaTarget.systemAppAssignments.length > 0) || (oaTarget.systemOaAssignments && oaTarget.systemOaAssignments.length > 0)) && (
                     <div style={{ marginTop: 'var(--spacing-lg)', borderTop: '1px solid var(--border-color)', paddingTop: 'var(--spacing-md)' }}>
                       <div style={{ fontSize: 'var(--font-size-xs)', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 8 }}>
-                        OA Hệ thống đang gán cho khách hàng này:
+                        Ứng dụng hệ thống đang gán cho khách hàng này:
                       </div>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                        {oaTarget.systemOaAssignments.map(item => (
-                          <div
-                            key={item.id}
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              padding: '8px 12px',
-                              background: 'var(--bg-body)',
-                              borderRadius: 'var(--border-radius-sm)',
-                              border: '1px solid var(--border-color)',
-                            }}
-                          >
-                            <div>
-                              <div style={{ fontWeight: 500, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
-                                {item.oaConfig?.oaName}
-                              </div>
-                              <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                                {item.oaConfig?._count?.templates || 0} mẫu tin đã sẵn sàng
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-danger"
-                              disabled={unassignSystemOaMutation.isPending}
-                              onClick={() => {
-                                if (window.confirm('Bạn có chắc muốn hủy gán OA Hệ thống này khỏi khách hàng?')) {
-                                  unassignSystemOaMutation.mutate({ userId: oaTarget.id, oaId: item.oaConfig.id });
-                                }
+                        {(oaTarget.systemAppAssignments || oaTarget.systemOaAssignments || []).map(item => {
+                          const appObj = item.appConfig || item.oaConfig;
+                          return (
+                            <div
+                              key={item.id}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '8px 12px',
+                                background: 'var(--bg-body)',
+                                borderRadius: 'var(--border-radius-sm)',
+                                border: '1px solid var(--border-color)',
                               }}
-                              style={{ fontSize: '11px', padding: '3px 8px', fontWeight: 500 }}
                             >
-                              Gỡ gán
-                            </button>
-                          </div>
-                        ))}
+                              <div>
+                                <div style={{ fontWeight: 500, fontSize: 'var(--font-size-sm)', color: 'var(--text-primary)' }}>
+                                  {appObj?.oaName}
+                                </div>
+                                <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                                  {appObj?._count?.templates || 0} mẫu tin đã sẵn sàng
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-danger"
+                                disabled={unassignSystemOaMutation.isPending}
+                                onClick={() => {
+                                  if (window.confirm('Bạn có chắc muốn hủy gán ứng dụng hệ thống này khỏi khách hàng?')) {
+                                    unassignSystemOaMutation.mutate({ userId: oaTarget.id, oaId: appObj.id });
+                                  }
+                                }}
+                                style={{ fontSize: '11px', padding: '3px 8px', fontWeight: 500 }}
+                              >
+                                Gỡ gán
+                              </button>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -877,7 +882,7 @@ export default function AdminCustomers() {
               </div>
             )}
 
-            {/* TAB 2: Cấu hình OA Riêng */}
+            {/* TAB 2: Ứng dụng liên kết riêng */}
             {oaModalTab === 'PRIVATE' && (
               <form onSubmit={handleDirectAddOA}>
                 <div className="modal-body">
@@ -890,12 +895,12 @@ export default function AdminCustomers() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label" style={{ fontWeight: 500 }}>Tên gợi nhớ OA *</label>
+                    <label className="form-label" style={{ fontWeight: 500 }}>Tên gợi nhớ ứng dụng *</label>
                     <input
                       className="form-input"
                       value={oaForm.oaName}
                       onChange={e => setOaForm({ ...oaForm, oaName: e.target.value })}
-                      placeholder="VD: OA Cửa hàng ABC"
+                      placeholder="VD: Ứng dụng Cửa hàng ABC"
                       required
                     />
                   </div>
@@ -937,7 +942,7 @@ export default function AdminCustomers() {
                     style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
                   >
                     <CheckCircle size={16} />
-                    {addOaMutation.isPending ? 'Đang kết nối...' : 'Xác nhận gán OA riêng'}
+                    {addOaMutation.isPending ? 'Đang kết nối...' : 'Xác nhận gán ứng dụng riêng'}
                   </button>
                 </div>
               </form>
@@ -1033,7 +1038,7 @@ export default function AdminCustomers() {
                 color: '#b91c1c',
                 lineHeight: 1.5,
               }}>
-                Toàn bộ dữ liệu liên quan bao gồm cấu hình OA, chiến dịch, tin nhắn và API key của khách hàng này sẽ bị xóa hoàn toàn khỏi hệ thống.
+                Toàn bộ dữ liệu liên quan bao gồm ứng dụng liên kết, chiến dịch, tin nhắn và API key của khách hàng này sẽ bị xóa hoàn toàn khỏi hệ thống.
               </div>
             </div>
             <div className="modal-footer" style={{ background: '#f8fafc', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>

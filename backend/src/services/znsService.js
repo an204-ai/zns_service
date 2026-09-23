@@ -5,11 +5,13 @@ const { v4: uuidv4 } = require('uuid');
 /**
  * Queue a single ZNS message for sending
  */
-async function queueMessage({ userId, fptOaConfigId, templateId, phone, templateData, refId, callbackUrl, campaignId }) {
+async function queueMessage({ userId, fptAppConfigId, fptOaConfigId, templateId, phone, templateData, refId, callbackUrl, campaignId }) {
+  const configId = fptAppConfigId || fptOaConfigId;
+
   // Validate template exists and is active
   const template = await prisma.znsTemplate.findFirst({
     where: {
-      fptOaConfigId,
+      fptAppConfigId: configId,
       templateId,
       status: 'ENABLE',
     },
@@ -19,10 +21,11 @@ async function queueMessage({ userId, fptOaConfigId, templateId, phone, template
     throw Object.assign(new Error('Template không tồn tại hoặc đã bị khoá'), { statusCode: 400 });
   }
 
-  // Validate OA config (owned by user OR active system OA assigned/shared)
-  const oaConfig = await prisma.fptOaConfig.findFirst({
+  // Validate App / OA config (owned by user OR active system App assigned/shared)
+  const appModel = prisma.fptAppConfig || prisma.fptOaConfig;
+  const appConfig = await appModel.findFirst({
     where: {
-      id: fptOaConfigId,
+      id: configId,
       status: 'ACTIVE',
       OR: [
         { userId },
@@ -31,15 +34,15 @@ async function queueMessage({ userId, fptOaConfigId, templateId, phone, template
     },
   });
 
-  if (!oaConfig) {
-    throw Object.assign(new Error('Cấu hình OA không hợp lệ hoặc đã bị vô hiệu hoá'), { statusCode: 400 });
+  if (!appConfig) {
+    throw Object.assign(new Error('Ứng dụng liên kết không hợp lệ hoặc đã bị vô hiệu hoá'), { statusCode: 400 });
   }
 
   // Create message record
   const message = await prisma.message.create({
     data: {
       userId,
-      fptOaConfigId,
+      fptAppConfigId: configId,
       templateId,
       phone,
       templateData,
@@ -58,7 +61,8 @@ async function queueMessage({ userId, fptOaConfigId, templateId, phone, template
       'zns_send',
       Buffer.from(JSON.stringify({
         messageId: message.id,
-        oaConfigId: fptOaConfigId,
+        oaConfigId: configId,
+        appConfigId: configId,
         phone,
         templateId,
         templateData,
@@ -75,14 +79,15 @@ async function queueMessage({ userId, fptOaConfigId, templateId, phone, template
 /**
  * Queue multiple messages (batch) for a campaign
  */
-async function queueBatchMessages({ userId, fptOaConfigId, templateId, records, campaignId }) {
+async function queueBatchMessages({ userId, fptAppConfigId, fptOaConfigId, templateId, records, campaignId }) {
+  const configId = fptAppConfigId || fptOaConfigId;
   const messages = [];
 
   for (const record of records) {
     try {
       const msg = await queueMessage({
         userId,
-        fptOaConfigId,
+        fptAppConfigId: configId,
         templateId,
         phone: record.phone,
         templateData: record.templateData,
@@ -174,13 +179,14 @@ async function handleDLR({ msgId, type, status, sentTime, receivedTime, error, e
 /**
  * Get messages with filtering and pagination
  */
-async function getMessages({ userId, status, phone, templateId, fptOaConfigId, campaignId, fromDate, toDate, page = 1, limit = 20 }) {
+async function getMessages({ userId, status, phone, templateId, fptAppConfigId, fptOaConfigId, campaignId, fromDate, toDate, page = 1, limit = 20 }) {
+  const configId = fptAppConfigId || fptOaConfigId;
   const where = {};
   if (userId) where.userId = userId;
   if (status) where.status = status;
   if (phone) where.phone = { contains: phone };
   if (templateId) where.templateId = templateId;
-  if (fptOaConfigId) where.fptOaConfigId = fptOaConfigId;
+  if (configId) where.fptAppConfigId = configId;
   if (campaignId) where.campaignId = campaignId;
   if (fromDate || toDate) {
     where.createdAt = {};
@@ -193,7 +199,7 @@ async function getMessages({ userId, status, phone, templateId, fptOaConfigId, c
       where,
       include: {
         user: { select: { id: true, fullName: true, companyName: true } },
-        fptOaConfig: { select: { id: true, oaName: true } },
+        fptAppConfig: { select: { id: true, oaName: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
@@ -202,21 +208,32 @@ async function getMessages({ userId, status, phone, templateId, fptOaConfigId, c
     prisma.message.count({ where }),
   ]);
 
-  return { data, total, page, totalPages: Math.ceil(total / limit) };
+  const formattedData = data.map((m) => ({
+    ...m,
+    fptOaConfig: m.fptAppConfig,
+  }));
+
+  return { data: formattedData, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
  * Get message by ID
  */
 async function getMessageById(id) {
-  return prisma.message.findUnique({
+  const message = await prisma.message.findUnique({
     where: { id },
     include: {
       user: { select: { id: true, fullName: true, companyName: true, email: true } },
-      fptOaConfig: { select: { id: true, oaName: true, oaId: true } },
+      fptAppConfig: { select: { id: true, oaName: true, oaId: true } },
       campaign: { select: { id: true, name: true } },
     },
   });
+
+  if (message) {
+    message.fptOaConfig = message.fptAppConfig;
+  }
+
+  return message;
 }
 
 /**

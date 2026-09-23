@@ -109,6 +109,7 @@ export default function CustomerCampaigns() {
 
     const formData = new FormData();
     formData.append('name', campaignName.trim());
+    formData.append('fptAppConfigId', oaId);
     formData.append('fptOaConfigId', oaId);
     formData.append('templateId', templateId);
     formData.append('file', file);
@@ -153,7 +154,7 @@ export default function CustomerCampaigns() {
                 <thead>
                   <tr>
                     <th>Tên chiến dịch</th>
-                    <th>Official Account</th>
+                    <th>Ứng dụng liên kết</th>
                     <th>Tổng tin</th>
                     <th>Thành công</th>
                     <th>Thất bại</th>
@@ -167,7 +168,7 @@ export default function CustomerCampaigns() {
                     return (
                       <tr key={c.id}>
                         <td className="table-cell-bold">{c.name}</td>
-                        <td style={{ fontSize: 'var(--font-size-sm)' }}>{c.fptOaConfig?.oaName || '—'}</td>
+                        <td style={{ fontSize: 'var(--font-size-sm)' }}>{c.fptAppConfig?.oaName || c.fptOaConfig?.oaName || '—'}</td>
                         <td>{c.totalMessages}</td>
                         <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>{c.successCount}</td>
                         <td style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{c.failedCount}</td>
@@ -256,7 +257,7 @@ export default function CustomerCampaigns() {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">Chọn Official Account (OA) *</label>
+                  <label className="form-label">Chọn ứng dụng gửi tin *</label>
                   <select
                     className="form-select"
                     value={oaId}
@@ -266,10 +267,10 @@ export default function CustomerCampaigns() {
                     }}
                     required
                   >
-                    <option value="">-- Chọn OA gửi tin --</option>
+                    <option value="">-- Chọn ứng dụng gửi tin --</option>
                     {oaConfigs?.map(o => (
                       <option key={o.id} value={o.id}>
-                        {o.isSystem ? `[OA Hệ thống] ${o.oaName}` : `[OA Riêng] ${o.oaName}`}
+                        {o.isSystem ? `[Ứng dụng hệ thống] ${o.oaName}` : `[Ứng dụng riêng] ${o.oaName}`}
                       </option>
                     ))}
                   </select>

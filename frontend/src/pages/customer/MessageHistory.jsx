@@ -81,7 +81,7 @@ export default function CustomerMessageHistory() {
                     <th style={{ width: '18%' }}>Thời gian <span className="th-sort">⇅</span></th>
                     <th style={{ width: '18%' }}>Số điện thoại <span className="th-sort">⇅</span></th>
                     <th style={{ width: '18%' }}>Mã Template <span className="th-sort">⇅</span></th>
-                    <th style={{ width: '20%' }}>Zalo OA <span className="th-sort">⇅</span></th>
+                    <th style={{ width: '20%' }}>Ứng dụng liên kết <span className="th-sort">⇅</span></th>
                     <th style={{ width: '12%', textAlign: 'center' }}>Trạng thái <span className="th-sort">⇅</span></th>
                     <th style={{ width: '14%' }}>Mã lỗi</th>
                   </tr>
@@ -100,7 +100,7 @@ export default function CustomerMessageHistory() {
                         {m.templateId}
                       </td>
                       <td style={{ fontSize: 12.5, color: '#475569' }}>
-                        {m.fptOaConfig?.oaName}
+                        {m.fptAppConfig?.oaName || m.fptOaConfig?.oaName || '—'}
                       </td>
                       <td style={{ textAlign: 'center' }}>
                         {m.status === 'SUCCESS' ? (

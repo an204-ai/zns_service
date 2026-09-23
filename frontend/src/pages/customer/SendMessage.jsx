@@ -41,6 +41,7 @@ export default function CustomerSendMessage() {
     e.preventDefault();
     setResult(null);
     sendMutation.mutate({
+      fptAppConfigId: oaId,
       fptOaConfigId: oaId,
       templateId: Number(templateId),
       phone: phone.trim(),
@@ -132,7 +133,7 @@ export default function CustomerSendMessage() {
             {/* Hàng 1: Chọn OA và Chọn Template */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
-                <label className="form-label" style={{ fontWeight: 500 }}>Chọn Official Account (OA) *</label>
+                <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng gửi tin *</label>
                 <select
                   className="form-select"
                   value={oaId}
@@ -143,10 +144,10 @@ export default function CustomerSendMessage() {
                   }}
                   required
                 >
-                  <option value="">-- Chọn OA gửi tin --</option>
+                  <option value="">-- Chọn ứng dụng gửi tin --</option>
                   {oaConfigs?.map(o => (
                     <option key={o.id} value={o.id}>
-                      {o.isSystem ? `[OA Hệ thống] ${o.oaName}` : `[OA Riêng] ${o.oaName}`}
+                      {o.isSystem ? `[Ứng dụng hệ thống] ${o.oaName}` : `[Ứng dụng riêng] ${o.oaName}`}
                     </option>
                   ))}
                 </select>
@@ -164,7 +165,7 @@ export default function CustomerSendMessage() {
                   disabled={!oaId}
                   required
                 >
-                  <option value="">{oaId ? '-- Chọn mẫu tin nhắn --' : '-- Vui lòng chọn OA trước --'}</option>
+                  <option value="">{oaId ? '-- Chọn mẫu tin nhắn --' : '-- Vui lòng chọn ứng dụng trước --'}</option>
                   {selectedOA?.templates?.map(t => (
                     <option key={t.templateId} value={t.templateId}>
                       {t.templateName} (ID: {t.templateId})
