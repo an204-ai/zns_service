@@ -20,9 +20,11 @@ import {
   CopySimple,
   Check,
   ShieldCheck,
-  Broadcast,
   Sparkle,
-  Info
+  Info,
+  WebhooksLogo,
+  PencilSimple,
+  FloppyDisk
 } from '@phosphor-icons/react';
 import CustomSelect from '../../components/CustomSelect';
 
@@ -43,6 +45,11 @@ export default function AdminCustomerDetail() {
 
   const [newlyGeneratedKey, setNewlyGeneratedKey] = useState(null);
   const [copiedKey, setCopiedKey] = useState(false);
+
+  // Webhook edit state
+  const [editingWebhookApp, setEditingWebhookApp] = useState(null);
+  const [webhookDlrInput, setWebhookDlrInput] = useState('');
+  const [webhookRatingInput, setWebhookRatingInput] = useState('');
 
   // Fetch Customer Details
   const { data: customer, isLoading, refetch } = useQuery({
@@ -135,6 +142,20 @@ export default function AdminCustomerDetail() {
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Lỗi đồng bộ mẫu tin');
+    },
+  });
+
+  // Update Webhook URL mutation
+  const updateWebhookMutation = useMutation({
+    mutationFn: ({ keyId, webhookDlrUrl, webhookRatingUrl }) =>
+      api.put(`/admin/customers/${id}/api-keys/${keyId}/webhook`, { webhookDlrUrl, webhookRatingUrl }),
+    onSuccess: () => {
+      refetch();
+      toast.success('Cập nhật Webhook URL cho khách hàng thành công');
+      setEditingWebhookApp(null);
+    },
+    onError: (err) => {
+      toast.error(err.response?.data?.message || 'Lỗi cập nhật Webhook URL');
     },
   });
 
@@ -360,34 +381,143 @@ export default function AdminCustomerDetail() {
                   </td>
                   <td>
                     {app.apiKey ? (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <code
-                          style={{
-                            background: 'var(--color-gray-100)',
-                            padding: '3px 8px',
-                            borderRadius: '4px',
-                            fontFamily: 'monospace',
-                            fontSize: '12px',
-                            fontWeight: 600,
-                            color: '#1e293b',
-                          }}
-                        >
-                          {app.apiKey.prefix}...
-                        </code>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-secondary"
-                          title="Cấp lại API Key ngẫu nhiên mới cho ứng dụng này"
-                          disabled={regenerateKeyMutation.isPending}
-                          onClick={() => {
-                            const name = app.appName;
-                            if (window.confirm(`Cấp lại mã API Key mới cho ứng dụng "${name}"? Mã cũ sẽ lập tức bị vô hiệu hóa.`)) {
-                              regenerateKeyMutation.mutate(app.id);
-                            }
-                          }}
-                        >
-                          <ArrowsClockwise size={13} /> Cấp lại
-                        </button>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 230 }}>
+                        {/* API Key Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                          <code
+                            style={{
+                              background: '#f8fafc',
+                              padding: '2px 8px',
+                              borderRadius: 5,
+                              fontFamily: 'monospace',
+                              fontSize: 12,
+                              fontWeight: 600,
+                              color: '#0f172a',
+                              border: '1px solid #e2e8f0',
+                            }}
+                          >
+                            {app.apiKey.prefix}...
+                          </code>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-secondary"
+                            style={{ height: 24, padding: '0 8px', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                            title="Cấp lại API Key mới cho ứng dụng này"
+                            disabled={regenerateKeyMutation.isPending}
+                            onClick={() => {
+                              const name = app.appName;
+                              if (window.confirm(`Cấp lại mã API Key mới cho ứng dụng "${name}"? Mã cũ sẽ lập tức bị vô hiệu hóa.`)) {
+                                regenerateKeyMutation.mutate(app.id);
+                              }
+                            }}
+                          >
+                            <ArrowsClockwise size={12} /> Cấp lại
+                          </button>
+                        </div>
+
+                        {/* Webhook URLs Row */}
+                        {(app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || app.apiKey.webhookRatingUrl) ? (
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              background: '#f8fafc',
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 6,
+                              padding: '4px 8px',
+                              gap: 6,
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0, flex: 1 }}>
+                              <WebhooksLogo size={13} color="#16a34a" weight="bold" style={{ flexShrink: 0 }} />
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  color: '#334155',
+                                  overflow: 'hidden',
+                                  textOverflow: 'ellipsis',
+                                  whiteSpace: 'nowrap',
+                                }}
+                                title={`DLR: ${app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || 'Chưa có'}\nRating: ${app.apiKey.webhookRatingUrl || 'Chưa có'}`}
+                              >
+                                {app.apiKey.webhookDlrUrl && app.apiKey.webhookRatingUrl
+                                  ? '2 Webhooks (DLR & Đánh giá)'
+                                  : (app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || app.apiKey.webhookRatingUrl)}
+                              </span>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingWebhookApp({
+                                  keyId: app.apiKey.id,
+                                  appName: app.appName,
+                                  webhookDlrUrl: app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || '',
+                                  webhookRatingUrl: app.apiKey.webhookRatingUrl || '',
+                                });
+                                setWebhookDlrInput(app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || '');
+                                setWebhookRatingInput(app.apiKey.webhookRatingUrl || '');
+                              }}
+                              style={{
+                                border: 'none',
+                                background: 'transparent',
+                                cursor: 'pointer',
+                                padding: '2px 4px',
+                                color: '#2563eb',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 2,
+                                fontSize: 11,
+                                fontWeight: 500,
+                                flexShrink: 0,
+                              }}
+                              title="Chỉnh sửa Webhook URL"
+                            >
+                              <PencilSimple size={12} weight="bold" /> Sửa
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingWebhookApp({
+                                keyId: app.apiKey.id,
+                                appName: app.appName,
+                                webhookDlrUrl: '',
+                                webhookRatingUrl: '',
+                              });
+                              setWebhookDlrInput('');
+                              setWebhookRatingInput('');
+                            }}
+                            style={{
+                              border: '1px dashed #cbd5e1',
+                              background: '#f8fafc',
+                              borderRadius: 6,
+                              padding: '3px 8px',
+                              fontSize: 11,
+                              color: '#64748b',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 4,
+                              cursor: 'pointer',
+                              width: 'fit-content',
+                              transition: 'all 0.15s ease',
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.borderColor = '#2563eb';
+                              e.currentTarget.style.color = '#2563eb';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.borderColor = '#cbd5e1';
+                              e.currentTarget.style.color = '#64748b';
+                            }}
+                            title="Thêm Webhook URL nhận callback"
+                          >
+                            <WebhooksLogo size={12} />
+                            + Cài đặt Webhook
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)' }}>
@@ -760,6 +890,232 @@ export default function AdminCustomerDetail() {
                 Đóng
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Cấu hình Webhook URL cho API Key của ứng dụng */}
+      {editingWebhookApp && (
+        <div className="modal-overlay" onClick={() => setEditingWebhookApp(null)}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 480, borderRadius: 12, overflow: 'hidden' }}>
+            <div className="modal-header" style={{ padding: '16px 20px', borderBottom: '1px solid #f1f5f9' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div
+                  style={{
+                    width: 34,
+                    height: 34,
+                    borderRadius: 8,
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    flexShrink: 0,
+                  }}
+                >
+                  <WebhooksLogo size={18} weight="bold" />
+                </div>
+                <div>
+                  <h3 className="modal-title" style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
+                    Cấu hình Webhook URL
+                  </h3>
+                </div>
+              </div>
+              <button type="button" className="modal-close" onClick={() => setEditingWebhookApp(null)}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const dlrTrimmed = webhookDlrInput.trim();
+                const ratingTrimmed = webhookRatingInput.trim();
+                if (dlrTrimmed && !/^https?:\/\/.+/i.test(dlrTrimmed)) {
+                  toast.error('Webhook URL trạng thái gửi tin (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
+                  return;
+                }
+                if (ratingTrimmed && !/^https?:\/\/.+/i.test(ratingTrimmed)) {
+                  toast.error('Webhook URL nhận đánh giá không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
+                  return;
+                }
+                updateWebhookMutation.mutate({
+                  keyId: editingWebhookApp.keyId,
+                  webhookDlrUrl: dlrTrimmed || null,
+                  webhookRatingUrl: ratingTrimmed || null,
+                });
+              }}
+            >
+              <div className="modal-body" style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {/* Box tóm tắt thông tin liên kết */}
+                <div
+                  style={{
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: 8,
+                    padding: '10px 14px',
+                    fontSize: 12.5,
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ color: '#64748b' }}>Khách hàng:</span>
+                    <strong style={{ color: '#0f172a' }}>{customer.fullName}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#64748b' }}>Ứng dụng:</span>
+                    <strong style={{ color: '#2563eb' }}>{editingWebhookApp.appName}</strong>
+                  </div>
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontWeight: 600,
+                      fontSize: 12.5,
+                      color: '#0f172a',
+                      marginBottom: 6,
+                    }}
+                  >
+                    Webhook URL nhận trạng thái gửi tin (DLR)
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://crm.yourdomain.com/webhook/zns-dlr"
+                    value={webhookDlrInput}
+                    onChange={(e) => setWebhookDlrInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: 38,
+                      padding: '0 12px',
+                      fontSize: 12.5,
+                      fontFamily: 'monospace',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label
+                    style={{
+                      display: 'block',
+                      fontWeight: 600,
+                      fontSize: 12.5,
+                      color: '#0f172a',
+                      marginBottom: 6,
+                    }}
+                  >
+                    Webhook URL nhận đánh giá của khách hàng
+                  </label>
+                  <input
+                    type="url"
+                    placeholder="https://crm.yourdomain.com/webhook/zns-rating"
+                    value={webhookRatingInput}
+                    onChange={(e) => setWebhookRatingInput(e.target.value)}
+                    style={{
+                      width: '100%',
+                      height: 38,
+                      padding: '0 12px',
+                      fontSize: 12.5,
+                      fontFamily: 'monospace',
+                      borderRadius: 6,
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#0f172a',
+                      outline: 'none',
+                      boxSizing: 'border-box',
+                    }}
+                  />
+                </div>
+              </div>
+
+              <div
+                className="modal-footer"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '12px 20px',
+                  background: '#f8fafc',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ height: 34, padding: '0 16px', fontSize: 12.5, fontWeight: 500 }}
+                    onClick={() => setEditingWebhookApp(null)}
+                    disabled={updateWebhookMutation.isPending}
+                  >
+                    Hủy
+                  </button>
+                  {(editingWebhookApp.webhookDlrUrl || editingWebhookApp.webhookRatingUrl) && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (window.confirm('Bạn có chắc muốn xóa cả 2 URL Webhook của ứng dụng này?')) {
+                          updateWebhookMutation.mutate({
+                            keyId: editingWebhookApp.keyId,
+                            webhookDlrUrl: null,
+                            webhookRatingUrl: null,
+                          });
+                        }
+                      }}
+                      style={{
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#dc2626',
+                        fontSize: 12,
+                        cursor: 'pointer',
+                        padding: '4px 6px',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 4,
+                        fontWeight: 500,
+                      }}
+                    >
+                      <Trash size={13} /> Xóa Webhook
+                    </button>
+                  )}
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={updateWebhookMutation.isPending}
+                  style={{
+                    height: 34,
+                    padding: '0 20px',
+                    fontSize: 12.5,
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    border: 'none',
+                    background: '#16a34a',
+                    color: '#ffffff',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    cursor: updateWebhookMutation.isPending ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 1px 2px rgba(22, 163, 74, 0.25)',
+                    transition: 'background 0.15s ease',
+                  }}
+                  onMouseEnter={(e) => { if (!updateWebhookMutation.isPending) e.currentTarget.style.background = '#15803d'; }}
+                  onMouseLeave={(e) => { if (!updateWebhookMutation.isPending) e.currentTarget.style.background = '#16a34a'; }}
+                >
+                  {updateWebhookMutation.isPending ? (
+                    <div className="spinner" style={{ width: 13, height: 13, borderColor: '#ffffff', borderTopColor: 'transparent' }} />
+                  ) : (
+                    <FloppyDisk size={14} weight="bold" />
+                  )}
+                  <span>{updateWebhookMutation.isPending ? 'Đang lưu...' : 'Lưu cấu hình'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

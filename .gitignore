@@ -1,2 +1,8 @@
 node_modules/
 .env
+.DS_Store
+dist/
+build/
+
+# Local seed scripts (not pushed to production/VPS)
+seed_local.js

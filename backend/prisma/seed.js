@@ -4,28 +4,22 @@ const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Đang khởi tạo dữ liệu hệ thống (Chế độ Production/VPS)...');
 
-  // Xóa toàn bộ tài khoản khác, chỉ giữ lại duy nhất tài khoản admin
-  await prisma.user.deleteMany({
-    where: {
-      email: { not: 'admin' },
-    },
-  });
-
-  // Khởi tạo hoặc cập nhật duy nhất 1 tài khoản admin
-  const passwordHash = await bcrypt.hash('admin123', 12);
+  // Khởi tạo duy nhất tài khoản Quản trị viên tối cao (Admin)
+  const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || 'admin123';
+  const adminPasswordHash = await bcrypt.hash(defaultPassword, 12);
 
   const admin = await prisma.user.upsert({
     where: { email: 'admin' },
     update: {
-      passwordHash,
+      passwordHash: adminPasswordHash,
       status: 'ACTIVE',
       role: 'ADMIN',
     },
     create: {
       email: 'admin',
-      passwordHash,
+      passwordHash: adminPasswordHash,
       fullName: 'Quản trị viên',
       companyName: 'ZNS Reseller Platform',
       phone: '0900000000',
@@ -33,14 +27,12 @@ async function main() {
       status: 'ACTIVE',
     },
   });
-
-  console.log(`✅ Duy nhất 1 tài khoản Admin: ${admin.email}`);
-  console.log('🌱 Seeding complete!');
+  console.log('🌱 Hoàn tất quá trình seed database!');
 }
 
 main()
   .catch((e) => {
-    console.error('Seed error:', e);
+    console.error('❌ Lỗi khi khởi tạo tài khoản Admin:', e);
     process.exit(1);
   })
   .finally(async () => {

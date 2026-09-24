@@ -46,7 +46,7 @@ async function send(req, res, next) {
       phone,
       templateData: template_data,
       refId: ref_id,
-      callbackUrl: callback_url,
+      callbackUrl: callback_url || req.webhookDlrUrl || req.webhookUrl,
     });
 
     res.status(202).json({

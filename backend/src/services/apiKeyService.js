@@ -35,6 +35,9 @@ async function createApiKey(userId, keyName, appConfigId = null) {
     appConfigId: apiKey.appConfigId,
     appConfig: apiKey.appConfig,
     apiKey: plainKey,
+    webhookUrl: apiKey.webhookUrl || null,
+    webhookDlrUrl: apiKey.webhookDlrUrl || apiKey.webhookUrl || null,
+    webhookRatingUrl: apiKey.webhookRatingUrl || null,
     createdAt: apiKey.createdAt,
   };
 }
@@ -88,6 +91,9 @@ async function getOrCreateApiKeyForApp(userId, appConfigId, keyName = null) {
     keyName: key.keyName,
     prefix: key.prefix,
     apiKey: plainKey,
+    webhookUrl: key.webhookUrl || null,
+    webhookDlrUrl: key.webhookDlrUrl || key.webhookUrl || null,
+    webhookRatingUrl: key.webhookRatingUrl || null,
     appConfigId: key.appConfigId,
     appConfig: key.appConfig,
     isActive: key.isActive,
@@ -123,6 +129,9 @@ async function regenerateApiKeyForApp(userId, appConfigId) {
       keyName: updated.keyName,
       prefix: updated.prefix,
       apiKey: plainKey,
+      webhookUrl: updated.webhookUrl || null,
+      webhookDlrUrl: updated.webhookDlrUrl || updated.webhookUrl || null,
+      webhookRatingUrl: updated.webhookRatingUrl || null,
       appConfigId,
     };
   } else {
@@ -143,6 +152,9 @@ async function regenerateApiKeyForApp(userId, appConfigId) {
       keyName: key.keyName,
       prefix: key.prefix,
       apiKey: plainKey,
+      webhookUrl: key.webhookUrl || null,
+      webhookDlrUrl: key.webhookDlrUrl || key.webhookUrl || null,
+      webhookRatingUrl: key.webhookRatingUrl || null,
       appConfigId,
     };
   }
@@ -159,6 +171,9 @@ async function getApiKeys(userId) {
       keyName: true,
       prefix: true,
       apiKeyEncrypted: true,
+      webhookUrl: true,
+      webhookDlrUrl: true,
+      webhookRatingUrl: true,
       appConfigId: true,
       isActive: true,
       lastUsedAt: true,
@@ -182,6 +197,9 @@ async function getApiKeys(userId) {
       keyName: k.keyName,
       prefix: k.prefix,
       apiKey: plainKey || `${k.prefix}...`,
+      webhookUrl: k.webhookUrl || null,
+      webhookDlrUrl: k.webhookDlrUrl || k.webhookUrl || null,
+      webhookRatingUrl: k.webhookRatingUrl || null,
       appConfigId: k.appConfigId,
       isActive: k.isActive,
       lastUsedAt: k.lastUsedAt,
@@ -189,6 +207,99 @@ async function getApiKeys(userId) {
       appConfig: k.appConfig,
     };
   });
+}
+
+/**
+ * Update Webhook URLs for a customer's API Key
+ */
+async function updateCustomerApiKeyWebhook(id, userId, payload) {
+  const key = await prisma.apiKey.findFirst({ where: { id, userId } });
+  if (!key) throw Object.assign(new Error('Khóa API Key không tồn tại hoặc không thuộc quyền sở hữu'), { statusCode: 404 });
+
+  let webhookDlr = typeof payload === 'object' && payload !== null ? (payload.webhookDlrUrl !== undefined ? payload.webhookDlrUrl : payload.webhookUrl) : payload;
+  let webhookRating = typeof payload === 'object' && payload !== null ? payload.webhookRatingUrl : undefined;
+
+  const cleanedDlr = webhookDlr !== undefined ? (webhookDlr?.trim() || null) : undefined;
+  const cleanedRating = webhookRating !== undefined ? (webhookRating?.trim() || null) : undefined;
+
+  if (cleanedDlr && !/^https?:\/\/.+/i.test(cleanedDlr)) {
+    throw Object.assign(new Error('Webhook URL trạng thái gửi tin (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)'), { statusCode: 400 });
+  }
+  if (cleanedRating && !/^https?:\/\/.+/i.test(cleanedRating)) {
+    throw Object.assign(new Error('Webhook URL đánh giá khách hàng không hợp lệ (phải bắt đầu bằng http:// hoặc https://)'), { statusCode: 400 });
+  }
+
+  const updateData = {};
+  if (cleanedDlr !== undefined) {
+    updateData.webhookDlrUrl = cleanedDlr;
+    updateData.webhookUrl = cleanedDlr;
+  }
+  if (cleanedRating !== undefined) {
+    updateData.webhookRatingUrl = cleanedRating;
+  }
+
+  const updated = await prisma.apiKey.update({
+    where: { id },
+    data: updateData,
+    select: {
+      id: true,
+      keyName: true,
+      prefix: true,
+      webhookUrl: true,
+      webhookDlrUrl: true,
+      webhookRatingUrl: true,
+      appConfigId: true,
+    },
+  });
+
+  return updated;
+}
+
+/**
+ * Admin update Webhook URLs for any API Key
+ */
+async function adminUpdateApiKeyWebhook(id, payload) {
+  const key = await prisma.apiKey.findUnique({ where: { id } });
+  if (!key) throw Object.assign(new Error('Khóa API Key không tồn tại'), { statusCode: 404 });
+
+  let webhookDlr = typeof payload === 'object' && payload !== null ? (payload.webhookDlrUrl !== undefined ? payload.webhookDlrUrl : payload.webhookUrl) : payload;
+  let webhookRating = typeof payload === 'object' && payload !== null ? payload.webhookRatingUrl : undefined;
+
+  const cleanedDlr = webhookDlr !== undefined ? (webhookDlr?.trim() || null) : undefined;
+  const cleanedRating = webhookRating !== undefined ? (webhookRating?.trim() || null) : undefined;
+
+  if (cleanedDlr && !/^https?:\/\/.+/i.test(cleanedDlr)) {
+    throw Object.assign(new Error('Webhook URL trạng thái gửi tin (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)'), { statusCode: 400 });
+  }
+  if (cleanedRating && !/^https?:\/\/.+/i.test(cleanedRating)) {
+    throw Object.assign(new Error('Webhook URL đánh giá khách hàng không hợp lệ (phải bắt đầu bằng http:// hoặc https://)'), { statusCode: 400 });
+  }
+
+  const updateData = {};
+  if (cleanedDlr !== undefined) {
+    updateData.webhookDlrUrl = cleanedDlr;
+    updateData.webhookUrl = cleanedDlr;
+  }
+  if (cleanedRating !== undefined) {
+    updateData.webhookRatingUrl = cleanedRating;
+  }
+
+  const updated = await prisma.apiKey.update({
+    where: { id },
+    data: updateData,
+    select: {
+      id: true,
+      keyName: true,
+      prefix: true,
+      webhookUrl: true,
+      webhookDlrUrl: true,
+      webhookRatingUrl: true,
+      userId: true,
+      appConfigId: true,
+    },
+  });
+
+  return updated;
 }
 
 /**
@@ -222,6 +333,8 @@ module.exports = {
   regenerateApiKeyForApp,
   regenerateApiKeyForOA: regenerateApiKeyForApp,
   getApiKeys,
+  updateCustomerApiKeyWebhook,
+  adminUpdateApiKeyWebhook,
   toggleApiKey,
   deleteApiKey,
 };

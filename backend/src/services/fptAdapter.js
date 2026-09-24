@@ -47,20 +47,22 @@ async function getOAInfo(appId, secretKey) {
       },
     });
   } catch (err) {
-    const detail = err.response?.data?.message || err.message || 'Lỗi kết nối máy chủ FPT';
-    const error = new Error(`Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
-    error.statusCode = 502;
+    const status = err.response?.status;
+    const detail = err.response?.data?.message || err.response?.data?.error || err.message || 'Lỗi kết nối máy chủ FPT';
+    const isAuthError = status === 400 || status === 401 || status === 403 || err.response?.data?.status === 0;
+    const error = new Error(isAuthError ? `App ID hoặc Secret Key không chính xác (${detail})` : `Không thể kết nối đến máy chủ FPT ZBS: ${detail}`);
+    error.statusCode = 400;
     throw error;
   }
 
   if (!response.data) {
     const error = new Error('Máy chủ FPT không phản hồi thông tin OA');
-    error.statusCode = 502;
+    error.statusCode = 400;
     throw error;
   }
 
   if (response.data.status !== 1) {
-    const error = new Error(response.data.message || 'App ID hoặc Secret Key không hợp lệ');
+    const error = new Error(response.data.message || 'App ID hoặc Secret Key không chính xác');
     error.statusCode = 400;
     throw error;
   }

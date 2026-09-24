@@ -30,8 +30,8 @@ export default function AdminTemplates() {
         <p className="console-section-desc">Danh sách mẫu tin ZNS đã duyệt và đồng bộ từ Zalo</p>
       </div>
 
-      <div className="console-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-md)' }}>
-        <div className="console-toolbar-left" style={{ width: 250 }}>
+      <div className="console-toolbar" style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 'var(--spacing-md)' }}>
+        <div style={{ width: 280, maxWidth: '100%', flex: '0 0 280px' }}>
           <CustomSelect
             value={appFilter}
             onChange={val => { setAppFilter(val); setPage(1); }}

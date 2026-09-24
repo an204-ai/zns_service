@@ -138,9 +138,12 @@ model ApiKey {
   apiKeyHash      String        @map("api_key_hash") @db.VarChar(255)
   apiKeyEncrypted String?       @map("api_key_encrypted") @db.Text
   prefix          String        @db.VarChar(10)
-  isActive        Boolean       @default(true) @map("is_active")
-  lastUsedAt      DateTime?     @map("last_used_at")
-  createdAt       DateTime      @default(now()) @map("created_at")
+  webhookUrl       String?       @map("webhook_url") @db.Text
+  webhookDlrUrl    String?       @map("webhook_dlr_url") @db.Text
+  webhookRatingUrl String?       @map("webhook_rating_url") @db.Text
+  isActive         Boolean       @default(true) @map("is_active")
+  lastUsedAt       DateTime?     @map("last_used_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
 
   user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   appConfig   FptAppConfig? @relation(fields: [appConfigId], references: [id], onDelete: Cascade)
@@ -188,6 +191,10 @@ model Message {
   retryCount      Int           @default(0) @map("retry_count")
   sentAt          DateTime?     @map("sent_at")
   deliveredAt     DateTime?     @map("delivered_at")
+  rating          Int?          @map("rating")
+  ratingFeedbacks Json?         @map("rating_feedbacks") @db.JsonB
+  ratingNote      String?       @map("rating_note") @db.Text
+  ratedAt         DateTime?     @map("rated_at")
   createdAt       DateTime      @default(now()) @map("created_at")
 
   user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -199,6 +206,7 @@ model Message {
   @@index([fptMessageId])
   @@index([status])
   @@index([campaignId])
+  @@index([rating])
   @@map("messages")
 }
 

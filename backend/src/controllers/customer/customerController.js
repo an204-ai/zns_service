@@ -146,6 +146,25 @@ async function deleteApiKey(req, res, next) {
   });
 }
 
+/** PUT /api/v1/customer/api-keys/:id/webhook */
+async function updateApiKeyWebhook(req, res, next) {
+  try {
+    const { webhookUrl, webhookDlrUrl, webhookRatingUrl } = req.body;
+    const result = await apiKeyService.updateCustomerApiKeyWebhook(req.params.id, req.user.id, {
+      webhookUrl,
+      webhookDlrUrl: webhookDlrUrl !== undefined ? webhookDlrUrl : webhookUrl,
+      webhookRatingUrl,
+    });
+    res.json({
+      success: true,
+      message: 'Cập nhật Webhook URL thành công',
+      data: result,
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 /** GET /api/v1/customer/app-configs */
 async function listAppConfigs(req, res, next) {
   try {
@@ -356,10 +375,10 @@ async function getCampaign(req, res, next) {
 /** GET /api/v1/customer/messages */
 async function listMessages(req, res, next) {
   try {
-    const { status, phone, templateId, fptAppConfigId, fromDate, toDate, page = 1, limit = 20 } = req.query;
+    const { status, phone, templateId, fptAppConfigId, hasRating, rating, fromDate, toDate, page = 1, limit = 20 } = req.query;
     const result = await znsService.getMessages({
       userId: req.user.id, status, phone, templateId: templateId ? +templateId : undefined,
-      fptAppConfigId, fromDate, toDate, page: +page, limit: +limit
+      fptAppConfigId, hasRating, rating: rating ? +rating : undefined, fromDate, toDate, page: +page, limit: +limit
     });
     res.json({ success: true, ...result });
   } catch (error) { next(error); }
@@ -385,6 +404,7 @@ module.exports = {
   createApiKey,
   toggleApiKey,
   deleteApiKey,
+  updateApiKeyWebhook,
   listAppConfigs,
   regenerateAppKey,
   sendMessage,

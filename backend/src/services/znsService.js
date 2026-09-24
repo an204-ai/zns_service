@@ -144,37 +144,13 @@ async function handleDLR({ msgId, type, status, sentTime, receivedTime, error, e
     }
   }
 
-  // Queue callback if customer provided callback_url
-  if (message.callbackUrl) {
-    const channel = getChannel();
-    if (channel) {
-      const { QUEUES } = require('../config/rabbitmq');
-      channel.sendToQueue(
-        QUEUES.ZNS_CALLBACK,
-        Buffer.from(JSON.stringify({
-          callbackUrl: message.callbackUrl,
-          data: {
-            tracking_id: message.id,
-            phone: message.phone,
-            status: newStatus,
-            fpt_message_id: msgId,
-            error_code: error || null,
-            error_info: errorInfo || null,
-            delivered_at: updated.deliveredAt,
-          },
-        })),
-        { persistent: true }
-      );
-    }
-  }
-
   return updated;
 }
 
 /**
  * Get messages with filtering and pagination
  */
-async function getMessages({ userId, status, phone, templateId, fptAppConfigId, campaignId, fromDate, toDate, page = 1, limit = 20 }) {
+async function getMessages({ userId, status, phone, templateId, fptAppConfigId, campaignId, hasRating, rating, fromDate, toDate, page = 1, limit = 20 }) {
   const where = {};
   if (userId) where.userId = userId;
   if (status) where.status = status;
@@ -182,6 +158,11 @@ async function getMessages({ userId, status, phone, templateId, fptAppConfigId, 
   if (templateId) where.templateId = templateId;
   if (fptAppConfigId) where.fptAppConfigId = fptAppConfigId;
   if (campaignId) where.campaignId = campaignId;
+  if (rating !== undefined && rating !== null && rating !== '') {
+    where.rating = Number(rating);
+  } else if (hasRating === 'true' || hasRating === true) {
+    where.rating = { not: null };
+  }
   if (fromDate || toDate) {
     where.createdAt = {};
     if (fromDate) where.createdAt.gte = new Date(fromDate);

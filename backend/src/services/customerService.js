@@ -177,7 +177,7 @@ async function getCustomerById(id) {
           _count: { select: { templates: true, messages: true } },
           apiKeys: {
             where: { userId: id },
-            select: { id: true, keyName: true, prefix: true, isActive: true, lastUsedAt: true, createdAt: true },
+            select: { id: true, keyName: true, prefix: true, webhookUrl: true, webhookDlrUrl: true, webhookRatingUrl: true, isActive: true, lastUsedAt: true, createdAt: true },
           },
         },
         orderBy: { createdAt: 'desc' },
@@ -198,7 +198,7 @@ async function getCustomerById(id) {
               _count: { select: { templates: true, messages: true } },
               apiKeys: {
                 where: { userId: id },
-                select: { id: true, keyName: true, prefix: true, isActive: true, lastUsedAt: true, createdAt: true },
+                select: { id: true, keyName: true, prefix: true, webhookUrl: true, webhookDlrUrl: true, webhookRatingUrl: true, isActive: true, lastUsedAt: true, createdAt: true },
               },
             },
           },

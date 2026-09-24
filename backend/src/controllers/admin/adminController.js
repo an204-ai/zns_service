@@ -229,10 +229,10 @@ async function listTemplates(req, res, next) {
 /** GET /api/v1/admin/messages */
 async function listMessages(req, res, next) {
   try {
-    const { userId, status, phone, templateId, fptAppConfigId, fromDate, toDate, page = 1, limit = 20 } = req.query;
+    const { userId, status, phone, templateId, fptAppConfigId, hasRating, rating, fromDate, toDate, page = 1, limit = 20 } = req.query;
     const result = await znsService.getMessages({
       userId, status, phone, templateId: templateId ? +templateId : undefined,
-      fptAppConfigId, fromDate, toDate, page: +page, limit: +limit
+      fptAppConfigId, hasRating, rating: rating ? +rating : undefined, fromDate, toDate, page: +page, limit: +limit
     });
     res.json({ success: true, ...result });
   } catch (error) { next(error); }
@@ -394,6 +394,23 @@ async function getTemplateDetail(req, res, next) {
   } catch (error) { next(error); }
 }
 
+/** PUT /api/v1/admin/customers/:id/api-keys/:keyId/webhook */
+async function updateCustomerApiKeyWebhook(req, res, next) {
+  try {
+    const { webhookUrl, webhookDlrUrl, webhookRatingUrl } = req.body;
+    const result = await apiKeyService.adminUpdateApiKeyWebhook(req.params.keyId, {
+      webhookUrl,
+      webhookDlrUrl: webhookDlrUrl !== undefined ? webhookDlrUrl : webhookUrl,
+      webhookRatingUrl,
+    });
+    res.json({
+      success: true,
+      message: 'Cập nhật Webhook URL cho khách hàng thành công',
+      data: result,
+    });
+  } catch (error) { next(error); }
+}
+
 module.exports = {
   listCustomers,
   getCustomer,
@@ -404,6 +421,7 @@ module.exports = {
   createCustomerPrivateApp,
   deleteCustomerPrivateApp,
   regenerateCustomerAppKey,
+  updateCustomerApiKeyWebhook,
   listAppConfigs,
   getAppConfig,
   createAppConfig,

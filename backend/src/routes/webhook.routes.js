@@ -44,6 +44,43 @@ router.post('/fpt-dlr', async (req, res) => {
       }
     }
 
+    // Tự động forward Webhook DLR sang máy chủ khách hàng
+    let targetDlrUrl = updated?.callbackUrl;
+    if (!targetDlrUrl && updated?.userId && updated?.fptAppConfigId) {
+      const { prisma } = require('../config/database');
+      const keyRec = await prisma.apiKey.findFirst({
+        where: { userId: updated.userId, appConfigId: updated.fptAppConfigId },
+        select: { webhookDlrUrl: true, webhookUrl: true },
+      });
+      targetDlrUrl = keyRec?.webhookDlrUrl || keyRec?.webhookUrl;
+    }
+
+    if (targetDlrUrl) {
+      const { getChannel, QUEUES } = require('../config/rabbitmq');
+      const channel = getChannel();
+      if (channel) {
+        channel.sendToQueue(
+          QUEUES.ZNS_CALLBACK,
+          Buffer.from(JSON.stringify({
+            callbackUrl: targetDlrUrl,
+            data: {
+              event: 'zns.dlr_status',
+              tracking_id: updated.id,
+              ref_id: updated.refId,
+              phone: updated.phone,
+              status: updated.status,
+              fpt_message_id: msg_id,
+              error_code: error || null,
+              error_info: error_info || null,
+              sent_time: sent_time || null,
+              delivered_at: updated.deliveredAt,
+            },
+          })),
+          { persistent: true }
+        );
+      }
+    }
+
     res.json({ success: true });
   } catch (error) {
     console.error('Webhook DLR error:', error.message);
@@ -69,25 +106,77 @@ router.post('/fpt-rating', async (req, res) => {
         OR: [
           msg_id ? { fptMessageId: msg_id } : null,
           ref_id ? { refId: ref_id } : null,
+          ref_id ? { id: ref_id } : null,
         ].filter(Boolean),
       },
     });
 
+    if (!message) {
+      console.warn(`[Rating Webhook] Không tìm thấy tin nhắn: msg_id=${msg_id}, ref_id=${ref_id}`);
+      return res.json({ success: true, message: 'Message not found, ignored' });
+    }
+
+    // 1. Cập nhật thông tin đánh giá vào CSDL
+    const updated = await prisma.message.update({
+      where: { id: message.id },
+      data: {
+        rating: rate !== undefined && rate !== null ? Number(rate) : null,
+        ratingFeedbacks: Array.isArray(feedbacks) ? feedbacks : (feedbacks ? [feedbacks] : null),
+        ratingNote: note || null,
+        ratedAt: time ? new Date(time) : new Date(),
+      },
+    });
+
+    // 2. Bắn sự kiện thời gian thực qua WebSocket
     const { getIO } = require('../sockets/socketServer');
     const io = getIO();
-    if (io && message) {
+    if (io) {
       io.to(`user:${message.userId}`).emit('message:rating', {
         messageId: message.id,
         fptMessageId: msg_id,
-        phone,
-        rate,
-        feedbacks,
-        note,
-        time,
+        phone: phone || message.phone,
+        rating: updated.rating,
+        ratingFeedbacks: updated.ratingFeedbacks,
+        ratingNote: updated.ratingNote,
+        ratedAt: updated.ratedAt,
       });
     }
 
-    res.json({ success: true });
+    // 3. Tự động forward Webhook sang máy chủ của khách hàng nếu khách đã cấu hình Webhook Đánh giá
+    let targetWebhookUrl = null;
+    if (message.userId && message.fptAppConfigId) {
+      const keyRec = await prisma.apiKey.findFirst({
+        where: { userId: message.userId, appConfigId: message.fptAppConfigId },
+        select: { webhookRatingUrl: true, webhookUrl: true },
+      });
+      targetWebhookUrl = keyRec?.webhookRatingUrl || keyRec?.webhookUrl;
+    }
+
+    if (targetWebhookUrl) {
+      const { getChannel, QUEUES } = require('../config/rabbitmq');
+      const channel = getChannel();
+      if (channel) {
+        channel.sendToQueue(
+          QUEUES.ZNS_CALLBACK,
+          Buffer.from(JSON.stringify({
+            callbackUrl: targetWebhookUrl,
+            data: {
+              event: 'zns.customer_rating',
+              tracking_id: message.id,
+              ref_id: message.refId,
+              phone: phone || message.phone,
+              rate: updated.rating,
+              feedbacks: updated.ratingFeedbacks,
+              note: updated.ratingNote,
+              rated_at: updated.ratedAt,
+            },
+          })),
+          { persistent: true }
+        );
+      }
+    }
+
+    res.json({ success: true, message: 'Rating saved successfully' });
   } catch (error) {
     console.error('Webhook Rating error:', error.message);
     res.status(500).json({ success: false });

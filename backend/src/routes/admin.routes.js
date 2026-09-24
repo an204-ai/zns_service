@@ -25,6 +25,7 @@ router.delete('/customers/:id/unassign-app/:appId', admin.unassignAppFromCustome
 router.post('/customers/:id/private-app', admin.createCustomerPrivateApp);
 router.delete('/customers/:id/private-app/:appId', admin.deleteCustomerPrivateApp);
 router.post('/customers/:id/apps/:appId/regenerate-key', admin.regenerateCustomerAppKey);
+router.put('/customers/:id/api-keys/:keyId/webhook', admin.updateCustomerApiKeyWebhook);
 
 // App Config management
 router.get('/app-configs/system', admin.listSystemAppConfigs);

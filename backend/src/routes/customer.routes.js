@@ -44,6 +44,7 @@ router.post('/change-password', customer.changePassword);
 // API Keys
 router.get('/api-keys', customer.listApiKeys);
 router.post('/api-keys', customer.createApiKey);
+router.put('/api-keys/:id/webhook', customer.updateApiKeyWebhook);
 router.patch('/api-keys/:id/toggle', customer.toggleApiKey);
 router.delete('/api-keys/:id', customer.deleteApiKey);
 

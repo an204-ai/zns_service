@@ -269,7 +269,7 @@ export default function CustomerSendMessage() {
               <button
                 type="submit"
                 className="btn btn-primary btn-lg"
-                disabled={sendMutation.isPending || !oaId || !templateId}
+                disabled={sendMutation.isPending || !appId || !templateId}
                 style={{
                   flex: 1,
                   display: 'inline-flex',

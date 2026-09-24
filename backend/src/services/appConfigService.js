@@ -6,34 +6,72 @@ const fptAdapter = require('./fptAdapter');
  * Create a new App config and sync from FPT
  */
 async function createAppConfig({ userId, appName, fptAppId, fptSecretKey, isSystem = false }) {
+  const cleanAppId = (fptAppId || '').trim();
+  if (!cleanAppId) {
+    throw Object.assign(new Error('Mã App ID của FPT Telecom không được để trống'), { statusCode: 400 });
+  }
+
+  // 1. Kiểm tra chống trùng App ID trên toàn hệ thống
+  const existingByAppId = await prisma.fptAppConfig.findFirst({
+    where: { fptAppId: cleanAppId },
+    select: { id: true, appName: true, isSystem: true },
+  });
+
+  if (existingByAppId) {
+    const typeStr = existingByAppId.isSystem ? 'Ứng dụng hệ thống' : 'Ứng dụng cá nhân';
+    throw Object.assign(
+      new Error(`Mã App ID "${cleanAppId}" đã được liên kết với ${typeStr} "${existingByAppId.appName}".`),
+      { statusCode: 400 }
+    );
+  }
+
   const finalAppName = appName?.trim() || 'Ứng dụng Zalo';
   // Encrypt secret key before storing
   const encrypted = encrypt(fptSecretKey);
 
-  // Try to get OA info from FPT to validate credentials
+  // Bắt buộc xác thực App ID & Secret Key với máy chủ FPT ZBS trước khi tạo ứng dụng
   let oaInfo = null;
-  let connectionWarning = null;
   try {
-    oaInfo = await fptAdapter.getOAInfo(fptAppId, fptSecretKey);
+    oaInfo = await fptAdapter.getOAInfo(cleanAppId, fptSecretKey);
   } catch (error) {
-    // If FPT explicitly returned invalid credentials (status !== 1 from FPT)
-    if (error.statusCode === 400) {
-      throw error;
+    const detail = error.message || 'Mã App ID hoặc Secret Key không chính xác';
+    throw Object.assign(
+      new Error(`Không thể xác thực ứng dụng với FPT ZBS: ${detail}. Vui lòng kiểm tra lại thông tin App ID và Secret Key.`),
+      { statusCode: 400 }
+    );
+  }
+
+  if (!oaInfo || !oaInfo.oa_id) {
+    throw Object.assign(
+      new Error('FPT ZBS không trả về thông tin Zalo Official Account hợp lệ cho App ID này. Vui lòng kiểm tra lại cấu hình.'),
+      { statusCode: 400 }
+    );
+  }
+
+  // 2. Nếu lấy được OA ID từ FPT, kiểm tra xem Zalo OA này đã được liên kết với App khác chưa
+  if (oaInfo?.oa_id) {
+    const existingByOaId = await prisma.fptAppConfig.findFirst({
+      where: { oaId: String(oaInfo.oa_id).trim() },
+      select: { id: true, appName: true, isSystem: true, fptAppId: true },
+    });
+    if (existingByOaId) {
+      const typeStr = existingByOaId.isSystem ? 'Ứng dụng hệ thống' : 'Ứng dụng cá nhân';
+      throw Object.assign(
+        new Error(`Zalo Official Account này (Mã OA: ${oaInfo.oa_id}) đã được liên kết với ${typeStr} "${existingByOaId.appName}" (App ID: ${existingByOaId.fptAppId}). Không thể kết nối trùng lặp.`),
+        { statusCode: 400 }
+      );
     }
-    // If network connection error / timeout (e.g. FPT firewall has not whitelisted local IP yet)
-    connectionWarning = error.message;
-    console.warn('[createAppConfig Network Warning]:', error.message);
   }
 
   const appConfig = await prisma.fptAppConfig.create({
     data: {
       userId: userId || null,
       appName: finalAppName,
-      oaId: oaInfo?.oa_id || null,
-      fptAppId,
+      oaId: oaInfo?.oa_id ? String(oaInfo.oa_id).trim() : null,
+      fptAppId: cleanAppId,
       fptSecretKeyEncrypted: encrypted,
       isSystem,
-      oaInfo: oaInfo || { name: finalAppName, note: connectionWarning || 'Chờ kết nối FPT ZBS' },
+      oaInfo,
       syncedAt: new Date(),
     },
   });
@@ -444,7 +482,25 @@ async function updateAppConfig(id, { appName, fptAppId, fptSecretKey, status }) 
     data.appName = appName.trim();
   }
   if (fptAppId !== undefined && fptAppId.trim()) {
-    data.fptAppId = fptAppId.trim();
+    const cleanAppId = fptAppId.trim();
+    if (cleanAppId !== existing.fptAppId) {
+      // Kiểm tra trùng App ID với ứng dụng khác
+      const duplicateApp = await prisma.fptAppConfig.findFirst({
+        where: {
+          fptAppId: cleanAppId,
+          id: { not: id },
+        },
+        select: { id: true, appName: true, isSystem: true },
+      });
+      if (duplicateApp) {
+        const typeStr = duplicateApp.isSystem ? 'Ứng dụng hệ thống' : 'Ứng dụng cá nhân';
+        throw Object.assign(
+          new Error(`Mã App ID "${cleanAppId}" đã được liên kết với ${typeStr} "${duplicateApp.appName}". Không thể cập nhật trùng.`),
+          { statusCode: 400 }
+        );
+      }
+      data.fptAppId = cleanAppId;
+    }
   }
   if (fptSecretKey && fptSecretKey.trim()) {
     data.fptSecretKeyEncrypted = encrypt(fptSecretKey.trim());
@@ -465,9 +521,24 @@ async function updateAppConfig(id, { appName, fptAppId, fptSecretKey, status }) 
     try {
       const oaInfo = await fptAdapter.getOAInfo(effectiveAppId, effectiveSecretKey);
       if (oaInfo?.oa_id) {
-        data.oaId = oaInfo.oa_id;
+        const cleanOaId = String(oaInfo.oa_id).trim();
+        const duplicateOa = await prisma.fptAppConfig.findFirst({
+          where: {
+            oaId: cleanOaId,
+            id: { not: id },
+          },
+          select: { id: true, appName: true, isSystem: true, fptAppId: true },
+        });
+        if (duplicateOa) {
+          throw Object.assign(
+            new Error(`Zalo Official Account này (Mã OA: ${cleanOaId}) đã được liên kết với ứng dụng "${duplicateOa.appName}". Không thể kết nối trùng lặp.`),
+            { statusCode: 400 }
+          );
+        }
+        data.oaId = cleanOaId;
       }
     } catch (e) {
+      if (e.statusCode === 400) throw e;
       console.warn('FPT getOAInfo check warning:', e.message);
     }
   }

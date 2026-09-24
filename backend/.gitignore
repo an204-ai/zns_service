@@ -1,6 +1,6 @@
-node_modules
-npm-debug.log
+node_modules/
 .env
-.git
+
+# Local seed scripts
 prisma/seed_local.js
 prisma/seed_demo*.js

@@ -385,7 +385,7 @@ export default function AdminAppConfigs() {
                 )}
 
                 {/* Chọn loại ứng dụng: Hệ thống vs Khách */}
-                <div className="form-group" style={{ marginBottom: 'var(--spacing-lg)' }}>
+                <div className="form-group" style={{ marginBottom: 16 }}>
                   <label className="form-label" style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
                     Chọn loại ứng dụng *
                   </label>
@@ -396,25 +396,20 @@ export default function AdminAppConfigs() {
                       style={{
                         border: formData.isSystem ? '2px solid #2563eb' : '1px solid #cbd5e1',
                         borderRadius: 8,
-                        padding: '12px',
+                        padding: '12px 14px',
                         cursor: 'pointer',
                         background: formData.isSystem ? '#eff6ff' : '#ffffff',
                         transition: 'all 0.15s ease',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, color: formData.isSystem ? '#1d4ed8' : '#334155' }}>
-                          <Buildings size={16} weight={formData.isSystem ? 'fill' : 'regular'} />
-                          Ứng dụng hệ thống
-                        </span>
-                        {formData.isSystem && <CheckCircle size={16} color="#2563eb" weight="fill" />}
-                      </div>
-                      <span style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.3 }}>
-                        Dùng chung cho nhiều khách hàng, có thể gán cấp phát cho nhiều tài khoản
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, color: formData.isSystem ? '#1d4ed8' : '#334155' }}>
+                        <Buildings size={16} weight={formData.isSystem ? 'fill' : 'regular'} />
+                        Ứng dụng hệ thống
                       </span>
+                      {formData.isSystem && <CheckCircle size={16} color="#2563eb" weight="fill" />}
                     </div>
 
                     {/* Option 2: Ứng dụng cá nhân */}
@@ -423,56 +418,50 @@ export default function AdminAppConfigs() {
                       style={{
                         border: !formData.isSystem ? '2px solid #7c3aed' : '1px solid #cbd5e1',
                         borderRadius: 8,
-                        padding: '12px',
+                        padding: '12px 14px',
                         cursor: 'pointer',
                         background: !formData.isSystem ? '#f5f3ff' : '#ffffff',
                         transition: 'all 0.15s ease',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: 4,
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, color: !formData.isSystem ? '#6d28d9' : '#334155' }}>
-                          <User size={16} weight={!formData.isSystem ? 'fill' : 'regular'} />
-                          Cá nhân
-                        </span>
-                        {!formData.isSystem && <CheckCircle size={16} color="#7c3aed" weight="fill" />}
-                      </div>
-                      <span style={{ fontSize: 11.5, color: '#64748b', lineHeight: 1.3 }}>
-                        Dành riêng cho 1 khách hàng duy nhất. Sau khi tạo sẽ vào trang chi tiết khách để gán
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6, fontWeight: 600, fontSize: 13, color: !formData.isSystem ? '#6d28d9' : '#334155' }}>
+                        <User size={16} weight={!formData.isSystem ? 'fill' : 'regular'} />
+                        Ứng dụng cá nhân
                       </span>
+                      {!formData.isSystem && <CheckCircle size={16} color="#7c3aed" weight="fill" />}
                     </div>
                   </div>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 500 }}>Tên ứng dụng *</label>
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: 'block' }}>Tên ứng dụng *</label>
                   <input
                     className="form-input"
                     placeholder="Ví dụ: CloudVerify hoặc Ứng dụng Khách hàng A"
                     value={formData.appName}
                     onChange={e => setFormData({ ...formData, appName: e.target.value })}
                     required
+                    style={{ height: 38 }}
                   />
-                  <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
-                    Tên ứng dụng đồng bộ theo thông tin trên cổng FPT fns.fpt.work
-                  </span>
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 500 }}>App ID *</label>
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: 'block' }}>App ID *</label>
                   <input
                     className="form-input"
                     placeholder="Lấy từ fns.fpt.work (VD: 1790070220)"
                     value={formData.fptAppId}
                     onChange={e => setFormData({ ...formData, fptAppId: e.target.value })}
                     required
+                    style={{ height: 38 }}
                   />
                 </div>
 
-                <div className="form-group">
-                  <label className="form-label" style={{ fontWeight: 500 }}>Secret Key *</label>
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label className="form-label" style={{ fontWeight: 600, fontSize: 13, marginBottom: 6, display: 'block' }}>Secret Key *</label>
                   <input
                     type="password"
                     className="form-input"
@@ -480,18 +469,27 @@ export default function AdminAppConfigs() {
                     value={formData.fptSecretKey}
                     onChange={e => setFormData({ ...formData, fptSecretKey: e.target.value })}
                     required
+                    style={{ height: 38 }}
                   />
-                  <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>
-                    Khóa bí mật sẽ được mã hóa chuẩn AES 256 GCM trước khi lưu vào cơ sở dữ liệu
-                  </span>
                 </div>
               </div>
 
-              <div className="modal-footer">
+              <div
+                className="modal-footer"
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '14px 20px',
+                  background: '#f8fafc',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowModal(false)}
+                  style={{ height: 36, padding: '0 18px', fontWeight: 500 }}
                 >
                   Hủy
                 </button>
@@ -499,6 +497,15 @@ export default function AdminAppConfigs() {
                   type="submit"
                   className="btn btn-primary"
                   disabled={createMutation.isPending}
+                  style={{
+                    height: 36,
+                    padding: '0 20px',
+                    fontWeight: 600,
+                    borderRadius: 6,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                  }}
                 >
                   {createMutation.isPending ? 'Đang kết nối FPT...' : 'Lưu ứng dụng'}
                 </button>

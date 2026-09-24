@@ -10,6 +10,7 @@
     "db:migrate": "npx prisma migrate dev",
     "db:generate": "npx prisma generate",
     "db:seed": "node prisma/seed.js",
+    "db:seed:local": "node prisma/seed_local.js",
     "db:reset": "npx prisma migrate reset --force"
   },
   "dependencies": {
