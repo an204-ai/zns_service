@@ -9,14 +9,23 @@ const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB max
   fileFilter: (req, file, cb) => {
-    const allowed = [
+    const allowedMimes = [
       'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       'application/vnd.ms-excel',
+      'text/csv',
+      'application/csv',
+      'text/x-csv',
+      'application/x-csv',
+      'text/plain',
+      'application/octet-stream',
     ];
-    if (allowed.includes(file.mimetype)) {
+    const ext = (file.originalname || '').toLowerCase();
+    const isAllowedExt = ext.endsWith('.xlsx') || ext.endsWith('.xls') || ext.endsWith('.csv');
+
+    if (isAllowedExt || allowedMimes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Chỉ chấp nhận file Excel (.xlsx, .xls)'));
+      cb(new Error('Chỉ chấp nhận file định dạng .xlsx, .xls, .csv'));
     }
   },
 });

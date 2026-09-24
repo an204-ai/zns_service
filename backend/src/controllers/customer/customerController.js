@@ -289,32 +289,40 @@ async function createCampaign(req, res, next) {
     const file = req.file;
 
     if (!name || !fptAppConfigId || !templateId || !file) {
-      return res.status(400).json({ success: false, message: 'Vui lòng nhập đủ thông tin và tải lên file Excel' });
+      return res.status(400).json({ success: false, message: 'Vui lòng nhập đủ thông tin và tải lên file dữ liệu (.xlsx, .xls, .csv)' });
     }
 
-    // Parse Excel file
+    // Parse Excel or CSV file
     const workbook = XLSX.read(file.buffer, { type: 'buffer' });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet);
+    const rows = XLSX.utils.sheet_to_json(sheet, { raw: false, defval: '' });
 
     if (!rows.length) {
-      return res.status(400).json({ success: false, message: 'File Excel không có dữ liệu' });
+      return res.status(400).json({ success: false, message: 'File dữ liệu không có nội dung' });
     }
 
-    // First column must be 'phone'
-    if (!rows[0].phone && !rows[0].Phone && !rows[0].PHONE) {
-      return res.status(400).json({ success: false, message: 'Cột đầu tiên trong file phải là "phone" (số điện thoại)' });
+    // Find phone column (case-insensitive & trimmed)
+    const phoneKey = Object.keys(rows[0]).find(k => k.trim().toLowerCase() === 'phone');
+    if (!phoneKey) {
+      return res.status(400).json({ success: false, message: 'File phải chứa cột "phone" (số điện thoại người nhận)' });
     }
 
     // Build records
     const records = rows.map(row => {
-      const phone = row.phone || row.Phone || row.PHONE;
-      const templateData = { ...row };
-      delete templateData.phone;
-      delete templateData.Phone;
-      delete templateData.PHONE;
-      return { phone: String(phone), templateData };
-    });
+      const phoneVal = row[phoneKey];
+      const templateData = {};
+      for (const [key, val] of Object.entries(row)) {
+        const cleanKey = key.trim();
+        if (cleanKey.toLowerCase() !== 'phone') {
+          templateData[cleanKey] = typeof val === 'string' ? val.trim() : String(val ?? '');
+        }
+      }
+      return { phone: String(phoneVal || '').trim(), templateData };
+    }).filter(r => !!r.phone);
+
+    if (!records.length) {
+      return res.status(400).json({ success: false, message: 'Không tìm thấy số điện thoại hợp lệ trong file' });
+    }
 
     // Create campaign
     const campaign = await campaignService.createCampaign({
