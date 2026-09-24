@@ -288,7 +288,7 @@ async function sendMessage(req, res, next) {
       return res.status(403).json({ success: false, message: 'Bạn không có quyền sử dụng Ứng dụng này' });
     }
 
-    const result = await znsService.sendZnsDirect({
+    const message = await znsService.queueMessage({
       userId: req.user.id,
       fptAppConfigId,
       templateId: Number(templateId),
@@ -298,7 +298,11 @@ async function sendMessage(req, res, next) {
       callbackUrl,
     });
 
-    res.json({ success: true, data: result, message: 'Gửi tin nhắn thành công' });
+    res.status(202).json({
+      success: true,
+      data: { trackingId: message.id, status: message.status },
+      message: 'Đã đưa tin nhắn vào hàng đợi gửi thành công',
+    });
   } catch (error) { next(error); }
 }
 
