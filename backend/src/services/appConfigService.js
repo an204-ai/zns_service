@@ -48,7 +48,7 @@ async function createAppConfig({ userId, appName, fptAppId, fptSecretKey, isSyst
     );
   }
 
-  // 2. Không giới hạn trùng OA ID vì 1 Zalo OA có thể được cấp nhiều App ID khác nhau trên FPT ZBS
+  // 2. Cho phép nhiều App ID khác nhau cùng liên kết chung 1 Zalo OA
 
   const appConfig = await prisma.fptAppConfig.create({
     data: {
