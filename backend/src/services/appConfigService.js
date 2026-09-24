@@ -95,10 +95,7 @@ async function createAppConfig({ userId, appName, fptAppId, fptSecretKey, isSyst
     }
   }
 
-  return {
-    ...appConfig,
-    connectionWarning,
-  };
+  return appConfig;
 }
 
 /**
