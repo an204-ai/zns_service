@@ -23,7 +23,7 @@ async function createApiKey(userId, keyName, appConfigId = null) {
     },
     include: {
       appConfig: {
-        select: { id: true, oaName: true, isSystem: true, fptAppId: true },
+        select: { id: true, appName: true, isSystem: true, fptAppId: true },
       },
     },
   });
@@ -48,14 +48,15 @@ async function getOrCreateApiKeyForApp(userId, appConfigId, keyName = null) {
     where: { userId, appConfigId },
     include: {
       appConfig: {
-        select: { id: true, oaName: true, isSystem: true },
+        select: { id: true, appName: true, isSystem: true },
       },
     },
   });
 
   if (!key) {
     const app = await prisma.fptAppConfig.findUnique({ where: { id: appConfigId } });
-    const generatedName = keyName || (app ? `Khóa API - ${app.oaName}` : 'Khóa API ZNS');
+    const appTitle = app?.appName || null;
+    const generatedName = keyName || (appTitle ? `Khóa API - ${appTitle}` : 'Khóa API ZNS');
     key = await createApiKey(userId, generatedName, appConfigId);
     return key;
   }
@@ -130,7 +131,7 @@ async function regenerateApiKeyForApp(userId, appConfigId) {
       data: {
         userId,
         appConfigId,
-        keyName: app ? `Khóa API - ${app.oaName}` : 'Khóa API ZNS',
+        keyName: app ? `Khóa API - ${app.appName}` : 'Khóa API ZNS',
         apiKeyHash,
         apiKeyEncrypted,
         prefix,
@@ -163,7 +164,7 @@ async function getApiKeys(userId) {
       lastUsedAt: true,
       createdAt: true,
       appConfig: {
-        select: { id: true, oaName: true, isSystem: true, fptAppId: true },
+        select: { id: true, appName: true, isSystem: true, fptAppId: true },
       },
     },
     orderBy: { createdAt: 'desc' },

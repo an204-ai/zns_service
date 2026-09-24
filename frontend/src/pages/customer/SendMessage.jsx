@@ -11,19 +11,19 @@ import CustomSelect from '../../components/CustomSelect';
 
 export default function CustomerSendMessage() {
   const toast = useToast();
-  const [oaId, setOaId] = useState('');
+  const [appId, setAppId] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [phone, setPhone] = useState('');
   const [params, setParams] = useState({});
   const [result, setResult] = useState(null);
 
-  const { data: oaConfigs } = useQuery({
-    queryKey: ['customer-oa-configs'],
-    queryFn: () => api.get('/customer/oa-configs').then(r => r.data.data),
+  const { data: appConfigs } = useQuery({
+    queryKey: ['customer-app-configs'],
+    queryFn: () => api.get('/customer/app-configs').then(r => r.data.data),
   });
 
-  const selectedOA = oaConfigs?.find(o => o.id === oaId);
-  const selectedTemplate = selectedOA?.templates?.find(t => String(t.templateId) === String(templateId));
+  const selectedApp = appConfigs?.find(o => o.id === appId);
+  const selectedTemplate = selectedApp?.templates?.find(t => String(t.templateId) === String(templateId));
 
   const sendMutation = useMutation({
     mutationFn: (d) => api.post('/customer/send-message', d),
@@ -42,7 +42,7 @@ export default function CustomerSendMessage() {
     e.preventDefault();
     setResult(null);
     sendMutation.mutate({
-      fptAppConfigId: oaId,
+      fptAppConfigId: appId,
       templateId: Number(templateId),
       phone: phone.trim(),
       templateData: params,
@@ -135,16 +135,16 @@ export default function CustomerSendMessage() {
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng gửi tin *</label>
                 <CustomSelect
-                  value={oaId}
+                  value={appId}
                   onChange={(val) => {
-                    setOaId(val);
+                    setAppId(val);
                     setTemplateId('');
                     setParams({});
                   }}
                   placeholder="Chọn ứng dụng gửi tin"
-                  options={(oaConfigs || []).map(o => ({
+                  options={(appConfigs || []).map(o => ({
                     value: o.id,
-                    label: o.oaName,
+                    label: o.appName,
                     sublabel: o.isSystem ? 'Hệ thống' : 'Cá nhân',
                   }))}
                 />
@@ -158,9 +158,9 @@ export default function CustomerSendMessage() {
                     setTemplateId(val);
                     setParams({});
                   }}
-                  disabled={!oaId}
-                  placeholder={oaId ? 'Chọn mẫu tin nhắn' : 'Vui lòng chọn ứng dụng trước'}
-                  options={(selectedOA?.templates || []).map(t => ({
+                  disabled={!appId}
+                  placeholder={appId ? 'Chọn mẫu tin nhắn' : 'Vui lòng chọn ứng dụng trước'}
+                  options={(selectedApp?.templates || []).map(t => ({
                     value: t.templateId,
                     label: t.templateName,
                     sublabel: `ID: ${t.templateId}`,

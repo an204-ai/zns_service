@@ -16,7 +16,7 @@ import {
   CheckCircle,
 } from '@phosphor-icons/react';
 
-export default function AdminOAConfigs() {
+export default function AdminAppConfigs() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const toast = useToast();
@@ -28,7 +28,7 @@ export default function AdminOAConfigs() {
   // Modal: Thêm ứng dụng
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState({
-    oaName: '',
+    appName: '',
     fptAppId: '',
     fptSecretKey: '',
     isSystem: true,
@@ -37,12 +37,12 @@ export default function AdminOAConfigs() {
 
   // Danh sách ứng dụng từ backend (hỗ trợ filter type & search)
   const { data: responseData, isLoading } = useQuery({
-    queryKey: ['admin-oa-configs', currentTab, searchQuery],
+    queryKey: ['admin-app-configs', currentTab, searchQuery],
     queryFn: () => {
       const params = {};
       if (currentTab !== 'all') params.type = currentTab;
       if (searchQuery.trim()) params.search = searchQuery.trim();
-      return api.get('/admin/oa-configs', { params }).then(r => r.data);
+      return api.get('/admin/app-configs', { params }).then(r => r.data);
     },
   });
 
@@ -50,12 +50,11 @@ export default function AdminOAConfigs() {
 
   // Tạo ứng dụng mutation
   const createMutation = useMutation({
-    mutationFn: (d) => api.post('/admin/oa-configs', d),
+    mutationFn: (d) => api.post('/admin/app-configs', d),
     onSuccess: (res) => {
-      queryClient.invalidateQueries(['admin-oa-configs']);
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-configs']);
       setShowModal(false);
-      setFormData({ oaName: '', fptAppId: '', fptSecretKey: '', isSystem: true });
+      setFormData({ appName: '', fptAppId: '', fptSecretKey: '', isSystem: true });
       toast.success(res.data?.message || 'Thêm ứng dụng thành công!');
     },
     onError: (err) => {
@@ -67,10 +66,9 @@ export default function AdminOAConfigs() {
 
   // Xóa ứng dụng
   const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/admin/oa-configs/${id}`),
+    mutationFn: (id) => api.delete(`/admin/app-configs/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-oa-configs']);
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-configs']);
       toast.success('Đã xóa ứng dụng thành công');
     },
     onError: (err) => {
@@ -81,7 +79,7 @@ export default function AdminOAConfigs() {
   const handleCreateApp = (e) => {
     e.preventDefault();
     setErrorMsg('');
-    if (!formData.oaName.trim() || !formData.fptAppId.trim() || !formData.fptSecretKey.trim()) {
+    if (!formData.appName.trim() || !formData.fptAppId.trim() || !formData.fptSecretKey.trim()) {
       setErrorMsg('Vui lòng điền đầy đủ các thông tin bắt buộc');
       return;
     }
@@ -149,7 +147,7 @@ export default function AdminOAConfigs() {
             onClick={() => {
               setShowModal(true);
               setErrorMsg('');
-              setFormData({ oaName: '', fptAppId: '', fptSecretKey: '', isSystem: true });
+              setFormData({ appName: '', fptAppId: '', fptSecretKey: '', isSystem: true });
             }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 36, whiteSpace: 'nowrap' }}
           >
@@ -178,158 +176,161 @@ export default function AdminOAConfigs() {
                 </tr>
               </thead>
               <tbody>
-                {appList.map((oa, index) => (
-                  <tr
-                    key={oa.id}
-                    className="clickable-row"
-                    onClick={() => navigate(`/admin/oa-configs/${oa.id}`)}
-                    style={{ cursor: 'pointer' }}
-                  >
-                    <td className="table-col-index">{index + 1}</td>
-                    <td>
-                      <div>
-                        <span
-                          className="table-cell-link"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/admin/oa-configs/${oa.id}`);
-                          }}
-                          style={{ fontWeight: 600, color: '#1e293b' }}
-                        >
-                          {oa.oaName}
-                        </span>
-                        <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
-                          App ID: <span style={{ fontFamily: 'monospace' }}>{oa.fptAppId}</span>
-                        </div>
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {oa.isSystem ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 11.5,
-                            fontWeight: 500,
-                            padding: '3px 8px',
-                            borderRadius: 4,
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
-                            border: '1px solid #bfdbfe',
-                          }}
-                        >
-                          <Buildings size={13} weight="bold" />
-                          Hệ thống
-                        </span>
-                      ) : (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 4,
-                            fontSize: 11.5,
-                            fontWeight: 500,
-                            padding: '3px 8px',
-                            borderRadius: 4,
-                            background: '#f5f3ff',
-                            color: '#6d28d9',
-                            border: '1px solid #ddd6fe',
-                          }}
-                        >
-                          <User size={13} weight="bold" />
-                          Cá nhân
-                        </span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 12.5, fontWeight: 500 }}>
-                      {oa.oaId || '—'}
-                    </td>
-                    <td style={{ textAlign: 'left' }}>
-                      {oa.isSystem ? (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 5,
-                            fontSize: 12,
-                            color: '#334155',
-                            background: '#f1f5f9',
-                            padding: '3px 8px',
-                            borderRadius: 4,
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          <Users size={13} color="#2563eb" weight="bold" />
-                          <span><strong>{oa._count?.assignments || 0}</strong> khách hàng</span>
-                        </span>
-                      ) : oa.user ? (
-                        <div style={{ display: 'flex', flexDirection: 'column' }}>
-                          <span style={{ fontSize: 12.5, fontWeight: 500, color: '#0f172a' }}>
-                            {oa.user.companyName || oa.user.fullName}
+                {appList.map((app, index) => {
+                  const appDisplayName = app.appName;
+                  return (
+                    <tr
+                      key={app.id}
+                      className="clickable-row"
+                      onClick={() => navigate(`/admin/app-configs/${app.id}`)}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      <td className="table-col-index">{index + 1}</td>
+                      <td>
+                        <div>
+                          <span
+                            className="table-cell-link"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/admin/app-configs/${app.id}`);
+                            }}
+                            style={{ fontWeight: 600, color: '#1e293b' }}
+                          >
+                            {appDisplayName}
                           </span>
-                          <span style={{ fontSize: 11, color: '#64748b' }}>
-                            {oa.user.email}
-                          </span>
+                          <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 2 }}>
+                            App ID: <span style={{ fontFamily: 'monospace' }}>{app.fptAppId}</span>
+                          </div>
                         </div>
-                      ) : (
-                        <span
-                          style={{
-                            display: 'inline-block',
-                            fontSize: 11.5,
-                            fontWeight: 500,
-                            padding: '2px 8px',
-                            borderRadius: 4,
-                            background: '#fffbeb',
-                            color: '#b45309',
-                            border: '1px solid #fde68a',
-                          }}
-                        >
-                          Chưa gán khách
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {app.isSystem ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 11.5,
+                              fontWeight: 500,
+                              padding: '3px 8px',
+                              borderRadius: 4,
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                            }}
+                          >
+                            <Buildings size={13} weight="bold" />
+                            Hệ thống
+                          </span>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 4,
+                              fontSize: 11.5,
+                              fontWeight: 500,
+                              padding: '3px 8px',
+                              borderRadius: 4,
+                              background: '#f5f3ff',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe',
+                            }}
+                          >
+                            <User size={13} weight="bold" />
+                            Cá nhân
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center', fontFamily: 'monospace', fontSize: 12.5, fontWeight: 500 }}>
+                        {app.oaId || '—'}
+                      </td>
+                      <td style={{ textAlign: 'left' }}>
+                        {app.isSystem ? (
+                          <span
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 5,
+                              fontSize: 12,
+                              color: '#334155',
+                              background: '#f1f5f9',
+                              padding: '3px 8px',
+                              borderRadius: 4,
+                              whiteSpace: 'nowrap',
+                            }}
+                          >
+                            <Users size={13} color="#2563eb" weight="bold" />
+                            <span><strong>{app._count?.assignments || 0}</strong> khách hàng</span>
+                          </span>
+                        ) : app.user ? (
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: 12.5, fontWeight: 500, color: '#0f172a' }}>
+                              {app.user.companyName || app.user.fullName}
+                            </span>
+                            <span style={{ fontSize: 11, color: '#64748b' }}>
+                              {app.user.email}
+                            </span>
+                          </div>
+                        ) : (
+                          <span
+                            style={{
+                              display: 'inline-block',
+                              fontSize: 11.5,
+                              fontWeight: 500,
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              background: '#fffbeb',
+                              color: '#b45309',
+                              border: '1px solid #fde68a',
+                            }}
+                          >
+                            Chưa gán khách
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <span className="badge badge-neutral" style={{ whiteSpace: 'nowrap' }}>
+                          {app._count?.templates || 0} mẫu
                         </span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <span className="badge badge-neutral" style={{ whiteSpace: 'nowrap' }}>
-                        {oa._count?.templates || 0} mẫu
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {oa.status === 'ACTIVE' ? (
-                        <span className="badge-active-pill" style={{ whiteSpace: 'nowrap' }}>Đang hoạt động</span>
-                      ) : (
-                        <span className="badge-inactive-pill" style={{ whiteSpace: 'nowrap' }}>Tạm dừng</span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
-                      <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap' }}>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-secondary"
-                          title="Xem chi tiết ứng dụng"
-                          onClick={() => navigate(`/admin/oa-configs/${oa.id}`)}
-                          style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
-                        >
-                          <Eye size={14} />
-                          <span>Chi tiết</span>
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          title="Xóa ứng dụng"
-                          onClick={() => {
-                            if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${oa.oaName}"?`)) {
-                              deleteMutation.mutate(oa.id);
-                            }
-                          }}
-                          style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}
-                        >
-                          <Trash size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {app.status === 'ACTIVE' ? (
+                          <span className="badge-active-pill" style={{ whiteSpace: 'nowrap' }}>Đang hoạt động</span>
+                        ) : (
+                          <span className="badge-inactive-pill" style={{ whiteSpace: 'nowrap' }}>Tạm dừng</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: 6, whiteSpace: 'nowrap' }}>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-secondary"
+                            title="Xem chi tiết ứng dụng"
+                            onClick={() => navigate(`/admin/app-configs/${app.id}`)}
+                            style={{ padding: '4px 10px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 5 }}
+                          >
+                            <Eye size={14} />
+                            <span>Chi tiết</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            title="Xóa ứng dụng"
+                            onClick={() => {
+                              if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${appDisplayName}"?`)) {
+                                deleteMutation.mutate(app.id);
+                              }
+                            }}
+                            style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center' }}
+                          >
+                            <Trash size={14} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
 
                 {!appList.length && (
                   <tr>
@@ -449,9 +450,9 @@ export default function AdminOAConfigs() {
                   <label className="form-label" style={{ fontWeight: 500 }}>Tên ứng dụng *</label>
                   <input
                     className="form-input"
-                    placeholder="Ví dụ: CloudVerify hoặc OA Khách hàng A"
-                    value={formData.oaName}
-                    onChange={e => setFormData({ ...formData, oaName: e.target.value })}
+                    placeholder="Ví dụ: CloudVerify hoặc Ứng dụng Khách hàng A"
+                    value={formData.appName}
+                    onChange={e => setFormData({ ...formData, appName: e.target.value })}
                     required
                   />
                   <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-secondary)', marginTop: 4, display: 'block' }}>

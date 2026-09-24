@@ -8,19 +8,19 @@ import { CaretRight } from '@phosphor-icons/react';
 import CustomSelect from '../../components/CustomSelect';
 
 export default function AdminTemplates() {
-  const [oaFilter, setOaFilter] = useState('');
+  const [appFilter, setAppFilter] = useState('');
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
-  const { data: oaConfigs } = useQuery({
-    queryKey: ['admin-oa-configs-select'],
-    queryFn: () => api.get('/admin/oa-configs', { params: { limit: 100 } }).then(r => r.data.data),
+  const { data: appConfigs } = useQuery({
+    queryKey: ['admin-app-configs-select'],
+    queryFn: () => api.get('/admin/app-configs', { params: { limit: 100 } }).then(r => r.data.data),
   });
 
   const { data, isLoading } = useQuery({
-    queryKey: ['admin-templates', oaFilter, page, limit],
-    queryFn: () => api.get('/admin/templates', { params: { oaConfigId: oaFilter || undefined, page, limit } }).then(r => r.data),
+    queryKey: ['admin-templates', appFilter, page, limit],
+    queryFn: () => api.get('/admin/templates', { params: { appConfigId: appFilter || undefined, page, limit } }).then(r => r.data),
   });
 
   return (
@@ -33,15 +33,15 @@ export default function AdminTemplates() {
       <div className="console-toolbar" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--spacing-md)' }}>
         <div className="console-toolbar-left" style={{ width: 250 }}>
           <CustomSelect
-            value={oaFilter}
-            onChange={val => { setOaFilter(val); setPage(1); }}
+            value={appFilter}
+            onChange={val => { setAppFilter(val); setPage(1); }}
             placeholder="Tất cả ứng dụng liên kết"
             options={[
               { value: '', label: 'Tất cả ứng dụng liên kết' },
-              ...(oaConfigs || []).map(oa => ({
-                value: oa.id,
-                label: oa.oaName,
-                sublabel: oa.isSystem ? 'Ứng dụng hệ thống' : 'Ứng dụng cá nhân',
+              ...(appConfigs || []).map(app => ({
+                value: app.id,
+                label: app.appName,
+                sublabel: app.isSystem ? 'Ứng dụng hệ thống' : 'Ứng dụng cá nhân',
               })),
             ]}
           />
@@ -79,7 +79,7 @@ export default function AdminTemplates() {
                         {t.templateId}
                       </td>
                       <td className="table-cell-bold">{t.templateName}</td>
-                      <td style={{ fontSize: 12.5, color: '#475569' }}>{t.fptAppConfig?.oaName}</td>
+                      <td style={{ fontSize: 12.5, color: '#475569' }}>{t.fptAppConfig?.appName}</td>
                       <td style={{ textAlign: 'center' }}>
                         <span className="badge badge-neutral" style={{ fontSize: 11 }}>
                           {t.templateTag || 'Chăm sóc khách hàng'}

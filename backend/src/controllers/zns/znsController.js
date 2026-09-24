@@ -16,7 +16,7 @@ async function send(req, res, next) {
 
     // Find the active App config (using API key's assigned App if present, or user's Apps)
     const activeConfigId = req.appConfigId;
-    const oaWhere = activeConfigId
+    const appWhere = activeConfigId
       ? { id: activeConfigId, status: 'ACTIVE' }
       : {
           status: 'ACTIVE',
@@ -30,7 +30,7 @@ async function send(req, res, next) {
       where: {
         templateId: template_id,
         status: 'ENABLE',
-        fptAppConfig: oaWhere,
+        fptAppConfig: appWhere,
       },
       include: { fptAppConfig: { select: { id: true } } },
     });
@@ -85,10 +85,22 @@ async function getStatus(req, res, next) {
 async function listTemplates(req, res, next) {
   try {
     const userId = req.user.id;
+    // Support filtering by API Key's assigned App config if present
+    const activeConfigId = req.appConfigId;
+    const appWhere = activeConfigId
+      ? { id: activeConfigId, status: 'ACTIVE' }
+      : {
+          status: 'ACTIVE',
+          OR: [
+            { userId },
+            { isSystem: true, assignments: { some: { userId } } },
+          ],
+        };
+
     const templates = await prisma.znsTemplate.findMany({
       where: {
         status: 'ENABLE',
-        fptAppConfig: { userId, status: 'ACTIVE' },
+        fptAppConfig: appWhere,
       },
       select: {
         templateId: true,
@@ -96,7 +108,7 @@ async function listTemplates(req, res, next) {
         templateTag: true,
         listParams: true,
         status: true,
-        fptAppConfig: { select: { oaName: true } },
+        fptAppConfig: { select: { appName: true } },
       },
       orderBy: { templateName: 'asc' },
     });
@@ -109,7 +121,7 @@ async function listTemplates(req, res, next) {
         tag: t.templateTag,
         params: t.listParams,
         status: t.status,
-        oa_name: t.fptAppConfig?.oaName || '',
+        app_name: t.fptAppConfig?.appName || '',
       })),
     });
   } catch (error) { next(error); }

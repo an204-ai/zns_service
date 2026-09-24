@@ -20,10 +20,12 @@ export default function TemplateDetailModal({
   isOpen,
   onClose,
   templateId,
+  appId,
   oaId,
   initialData = null,
   isAdmin = false
 }) {
+  const targetAppId = appId || oaId;
   const [activeTab, setActiveTab] = useState('info'); // 'info' | 'ratings'
   const [isRefreshingDetail, setIsRefreshingDetail] = useState(false);
 
@@ -43,8 +45,8 @@ export default function TemplateDetailModal({
 
   // Fetch live detail
   const detailEndpoint = isAdmin
-    ? `/admin/oa-configs/${oaId}/templates/${templateId}/detail`
-    : `/customer/oa-configs/${oaId}/templates/${templateId}/detail`;
+    ? `/admin/app-configs/${targetAppId}/templates/${templateId}/detail`
+    : `/customer/app-configs/${targetAppId}/templates/${templateId}/detail`;
 
   const {
     data: detailData,
@@ -53,7 +55,7 @@ export default function TemplateDetailModal({
     error: detailError,
     refetch: refetchDetail
   } = useQuery({
-    queryKey: ['template-detail', oaId, templateId, isAdmin],
+    queryKey: ['template-detail', targetAppId, templateId, isAdmin],
     queryFn: () =>
       api.get(detailEndpoint, {
         params: { refresh: isRefreshingDetail ? 'true' : undefined }
@@ -65,15 +67,15 @@ export default function TemplateDetailModal({
         throw err;
       }),
     initialData: initialData || undefined,
-    enabled: !!isOpen && !!templateId && !!oaId,
+    enabled: !!isOpen && !!templateId && !!targetAppId,
     retry: 0,
     staleTime: 60000,
   });
 
   // Fetch ratings
   const ratingsEndpoint = isAdmin
-    ? `/admin/oa-configs/${oaId}/templates/${templateId}/ratings`
-    : `/customer/oa-configs/${oaId}/templates/${templateId}/ratings`;
+    ? `/admin/app-configs/${targetAppId}/templates/${templateId}/ratings`
+    : `/customer/app-configs/${targetAppId}/templates/${templateId}/ratings`;
 
   const {
     data: ratingsData,
@@ -82,7 +84,7 @@ export default function TemplateDetailModal({
     error: ratingsError,
     refetch: refetchRatings
   } = useQuery({
-    queryKey: ['template-ratings', oaId, templateId, dateFilter.from, dateFilter.to, ratingPage, isAdmin],
+    queryKey: ['template-ratings', targetAppId, templateId, dateFilter.from, dateFilter.to, ratingPage, isAdmin],
     queryFn: () =>
       api.get(ratingsEndpoint, {
         params: {
@@ -91,7 +93,7 @@ export default function TemplateDetailModal({
           page: ratingPage,
         }
       }).then(r => r.data.data),
-    enabled: !!isOpen && !!templateId && !!oaId && activeTab === 'ratings',
+    enabled: !!isOpen && !!templateId && !!targetAppId && activeTab === 'ratings',
     retry: 1,
     staleTime: 30000,
   });
@@ -175,7 +177,7 @@ export default function TemplateDetailModal({
                 </span>
               </div>
               <div style={{ fontSize: 12, color: '#64748b', marginTop: 2 }}>
-                Ứng dụng: <strong>{tpl.fptAppConfig?.oaName || 'Ứng dụng liên kết'}</strong> • Phân loại: {tpl.templateTag || 'Chăm sóc khách hàng'}
+                Ứng dụng: <strong>{tpl.fptAppConfig?.appName || 'Ứng dụng liên kết'}</strong> • Phân loại: {tpl.templateTag || 'Chăm sóc khách hàng'}
               </div>
             </div>
           </div>

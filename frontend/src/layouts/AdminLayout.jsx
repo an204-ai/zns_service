@@ -25,7 +25,7 @@ const navGroups = [
     items: [
       { to: '/admin', label: 'Tổng quan', icon: SquaresFour, end: true },
       { to: '/admin/customers', label: 'Khách hàng', icon: Folder },
-      { to: '/admin/oa-configs', label: 'Quản lý ứng dụng', icon: ShieldCheck },
+      { to: '/admin/app-configs', label: 'Quản lý ứng dụng', icon: ShieldCheck },
     ]
   },
   {

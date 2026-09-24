@@ -20,45 +20,45 @@ import {
 import Pagination from '../../components/Pagination';
 import TemplateDetailModal from '../../components/TemplateDetailModal';
 
-export default function CustomerOAInfo() {
+export default function CustomerAppInfo() {
   const toast = useToast();
 
-  const [selectedOaId, setSelectedOaId] = useState(null);
+  const [selectedAppId, setSelectedAppId] = useState(null);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showKeyVisible, setShowKeyVisible] = useState(false);
-  const [copiedKeyOaId, setCopiedKeyOaId] = useState(null);
+  const [copiedKeyAppId, setCopiedKeyAppId] = useState(null);
   const [copiedDetailKey, setCopiedDetailKey] = useState(false);
 
-  const { data: oaConfigs, isLoading } = useQuery({
-    queryKey: ['customer-oa-configs'],
-    queryFn: () => api.get('/customer/oa-configs').then((r) => r.data.data),
+  const { data: appConfigs, isLoading } = useQuery({
+    queryKey: ['customer-app-configs'],
+    queryFn: () => api.get('/customer/app-configs').then((r) => r.data.data),
   });
 
-  const selectedOa = oaConfigs?.find((o) => o.id === selectedOaId);
+  const selectedApp = appConfigs?.find((a) => a.id === selectedAppId);
 
-  // Quota for selected OA
+  // Quota cho ứng dụng đang chọn
   const {
-    data: oaQuota,
+    data: appQuota,
     isLoading: isQuotaLoading,
     isError: isQuotaError,
     error: quotaError,
     refetch: refetchQuota
   } = useQuery({
-    queryKey: ['customer-oa-quota', selectedOa?.id],
-    queryFn: () => api.get(`/customer/oa-configs/${selectedOa.id}/quota`).then((r) => r.data.data),
-    enabled: !!selectedOa?.id,
+    queryKey: ['customer-app-quota', selectedApp?.id],
+    queryFn: () => api.get(`/customer/app-configs/${selectedApp.id}/quota`).then((r) => r.data.data),
+    enabled: !!selectedApp?.id,
     retry: 1,
   });
 
-  const handleCopyText = (text, type = 'key', oaId = null) => {
+  const handleCopyText = (text, type = 'key', appId = null) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     if (type === 'row-key') {
-      setCopiedKeyOaId(oaId);
-      setTimeout(() => setCopiedKeyOaId(null), 2000);
+      setCopiedKeyAppId(appId);
+      setTimeout(() => setCopiedKeyAppId(null), 2000);
       toast.success('Đã sao chép API Key');
     } else if (type === 'detail-key') {
       setCopiedDetailKey(true);
@@ -75,9 +75,13 @@ export default function CustomerOAInfo() {
     );
   }
 
-  if (selectedOa) {
-    const rawApiKey = selectedOa.apiKey?.apiKey || selectedOa.apiKey?.prefix || '';
-    const maskedApiKey = `${selectedOa.apiKey?.prefix || 'YOUR_API_KEY'}••••••••••••••••••••••••••••••••`;
+  // ==========================================
+  // VIEW 1: CHI TIẾT ỨNG DỤNG ĐƯỢC CHỌN
+  // ==========================================
+  if (selectedApp) {
+    const rawApiKey = selectedApp.apiKey?.apiKey || selectedApp.apiKey?.prefix || '';
+    const maskedApiKey = `${selectedApp.apiKey?.prefix || 'YOUR_API_KEY'}••••••••••••••••••••••••••••••••`;
+    const appDisplayName = selectedApp.appName || 'Ứng dụng';
 
     return (
       <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
@@ -94,7 +98,7 @@ export default function CustomerOAInfo() {
               fontSize: 12.5,
             }}
             onClick={() => {
-              setSelectedOaId(null);
+              setSelectedAppId(null);
               setShowKeyVisible(false);
             }}
           >
@@ -117,11 +121,11 @@ export default function CustomerOAInfo() {
         >
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
             <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
-              {selectedOa.oaName}
+              {appDisplayName}
             </h1>
 
             <div>
-              {selectedOa.status === 'ACTIVE' ? (
+              {selectedApp.status === 'ACTIVE' ? (
                 <span className="badge-active-pill">Đang hoạt động</span>
               ) : (
                 <span className="badge-inactive-pill">Tạm dừng</span>
@@ -130,7 +134,7 @@ export default function CustomerOAInfo() {
           </div>
 
           <div className="header-info-strip">
-            {selectedOa.isSystem ? (
+            {selectedApp.isSystem ? (
               <span
                 style={{
                   display: 'inline-flex',
@@ -168,19 +172,19 @@ export default function CustomerOAInfo() {
               </span>
             )}
             <div className="header-info-pill">
-              Mã OA: <strong style={{ color: '#0f172a' }}>{selectedOa.oaId || 'Chưa cập nhật'}</strong>
+              Mã OA: <strong style={{ color: '#0f172a' }}>{selectedApp.oaId || 'Chưa cập nhật'}</strong>
             </div>
             <div className="header-info-pill">
-              <span style={{ color: '#0284c7', fontWeight: 600 }}>{selectedOa.templates?.length || 0}</span> mẫu tin ZNS
+              <span style={{ color: '#0284c7', fontWeight: 600 }}>{selectedApp.templates?.length || 0}</span> mẫu tin ZNS
             </div>
-            {oaQuota?.dailyQuota ? (
+            {appQuota?.dailyQuota ? (
               <div
                 className="header-info-pill"
                 style={{ background: '#dcfce7', borderColor: '#86efac', color: '#166534' }}
               >
                 <Gauge size={13} color="#15803d" weight="bold" />
                 <strong style={{ color: '#15803d' }}>
-                  {oaQuota.remainingQuota?.toLocaleString('vi-VN')} / {oaQuota.dailyQuota?.toLocaleString('vi-VN')}
+                  {appQuota.remainingQuota?.toLocaleString('vi-VN')} / {appQuota.dailyQuota?.toLocaleString('vi-VN')}
                 </strong> tin hôm nay
               </div>
             ) : isQuotaError ? (
@@ -195,7 +199,7 @@ export default function CustomerOAInfo() {
           </div>
         </div>
 
-        {/* Thanh Khóa bảo mật API Key gọn gàng (1 hàng) */}
+        {/* Thanh Khóa bảo mật API Key */}
         <div
           className="card"
           style={{
@@ -286,7 +290,7 @@ export default function CustomerOAInfo() {
           </div>
         </div>
 
-        {/* Thanh Hạn mức gửi tin ZNS tinh gọn (1 hàng duy nhất) */}
+        {/* Thanh Hạn mức gửi tin ZNS */}
         <div
           className="card"
           style={{
@@ -338,39 +342,38 @@ export default function CustomerOAInfo() {
                   <ArrowsClockwise size={12} /> Thử lại
                 </button>
               </div>
-            ) : oaQuota ? (
+            ) : appQuota ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#334155' }}>
                   <Gauge size={16} color="#0284c7" weight="bold" />
                   <span style={{ color: '#64748b' }}>Hạn mức hôm nay:</span>
                   <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                    {oaQuota.remainingQuota?.toLocaleString('vi-VN') || 0}{' '}
+                    {appQuota.remainingQuota?.toLocaleString('vi-VN') || 0}{' '}
                     <span style={{ fontWeight: 500, color: '#64748b', fontSize: 11.5 }}>
-                      / {oaQuota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
+                      / {appQuota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
                     </span>
                   </span>
-                  {/* Mini Progress bar */}
                   <div style={{ width: 64, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginLeft: 4 }}>
                     <div
                       style={{
                         height: '100%',
                         background: '#0284c7',
-                        width: `${oaQuota.dailyQuota ? Math.min(100, Math.round((oaQuota.remainingQuota / oaQuota.dailyQuota) * 100)) : 0}%`,
+                        width: `${appQuota.dailyQuota ? Math.min(100, Math.round((appQuota.remainingQuota / appQuota.dailyQuota) * 100)) : 0}%`,
                         borderRadius: 3,
                       }}
                     />
                   </div>
                   <span style={{ fontSize: 11.5, color: '#0284c7', fontWeight: 600, marginLeft: 2 }}>
-                    (Còn {oaQuota.dailyQuota ? Math.round((oaQuota.remainingQuota / oaQuota.dailyQuota) * 100) : 0}%)
+                    (Còn {appQuota.dailyQuota ? Math.round((appQuota.remainingQuota / appQuota.dailyQuota) * 100) : 0}%)
                   </span>
                 </div>
 
-                {oaQuota.remainingMonthlyPromotionQuota !== undefined && (
+                {appQuota.remainingMonthlyPromotionQuota !== undefined && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#334155' }}>
                     <span style={{ color: '#cbd5e1' }}>•</span>
                     <span style={{ color: '#64748b' }}>Hậu mãi:</span>
                     <span style={{ fontWeight: 700, color: '#059669' }}>
-                      {oaQuota.remainingMonthlyPromotionQuota?.toLocaleString('vi-VN')} tin
+                      {appQuota.remainingMonthlyPromotionQuota?.toLocaleString('vi-VN')} tin
                     </span>
                   </div>
                 )}
@@ -417,7 +420,7 @@ export default function CustomerOAInfo() {
                 </tr>
               </thead>
               <tbody>
-                {selectedOa.templates?.map((t, idx) => (
+                {selectedApp.templates?.map((t, idx) => (
                   <tr
                     key={t.id}
                     className="clickable-row"
@@ -469,7 +472,7 @@ export default function CustomerOAInfo() {
                   </tr>
                 ))}
 
-                {!selectedOa.templates?.length && (
+                {!selectedApp.templates?.length && (
                   <tr>
                     <td colSpan={7} className="empty-state">
                       <div className="empty-state-title">Chưa có mẫu tin nào</div>
@@ -490,7 +493,7 @@ export default function CustomerOAInfo() {
             isOpen={!!selectedTemplate}
             onClose={() => setSelectedTemplate(null)}
             templateId={selectedTemplate.templateId}
-            oaId={selectedOa.id}
+            appId={selectedApp.id}
             initialData={selectedTemplate}
             isAdmin={false}
           />
@@ -499,21 +502,21 @@ export default function CustomerOAInfo() {
     );
   }
 
-
   // ==========================================
   // VIEW 2: BẢNG DANH SÁCH ỨNG DỤNG LIÊN KẾT
   // ==========================================
-  const filteredOas = (oaConfigs || []).filter((oa) => {
+  const filteredApps = (appConfigs || []).filter((app) => {
     if (!searchTerm.trim()) return true;
     const q = searchTerm.toLowerCase();
+    const appName = (app.appName || '').toLowerCase();
     return (
-      oa.oaName?.toLowerCase().includes(q) ||
-      oa.oaId?.toLowerCase().includes(q)
+      appName.includes(q) ||
+      app.oaId?.toLowerCase().includes(q)
     );
   });
 
-  const totalPages = Math.ceil(filteredOas.length / pageSize) || 1;
-  const paginatedOas = filteredOas.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.ceil(filteredApps.length / pageSize) || 1;
+  const paginatedApps = filteredApps.slice((page - 1) * pageSize, page * pageSize);
 
   return (
     <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
@@ -546,14 +549,14 @@ export default function CustomerOAInfo() {
 
       {/* Main Table Card */}
       <div className="console-card-table">
-        {!oaConfigs?.length ? (
+        {!appConfigs?.length ? (
           <div className="empty-state">
             <div className="empty-state-title">Chưa có ứng dụng nào được liên kết</div>
             <div className="empty-state-text">
               Vui lòng liên hệ ban quản trị hệ thống để được gán ứng dụng phục vụ gửi tin ZNS
             </div>
           </div>
-        ) : !filteredOas.length ? (
+        ) : !filteredApps.length ? (
           <div className="empty-state">
             <div className="empty-state-title">Không tìm thấy ứng dụng phù hợp</div>
             <div className="empty-state-text">
@@ -576,63 +579,55 @@ export default function CustomerOAInfo() {
                   </tr>
                 </thead>
                 <tbody>
-                  {paginatedOas.map((oa, index) => {
-                    const apiKeyVal = oa.apiKey?.apiKey || (oa.apiKey?.prefix ? `${oa.apiKey.prefix}••••••••••••••••••••••••••••••••` : '');
-                    const isCopied = copiedKeyOaId === oa.id;
+                  {paginatedApps.map((app, index) => {
+                    const apiKeyVal = app.apiKey?.apiKey || (app.apiKey?.prefix ? `${app.apiKey.prefix}••••••••••••••••••••••••••••••••` : '');
+                    const isCopied = copiedKeyAppId === app.id;
                     const rowIndex = (page - 1) * pageSize + index + 1;
+                    const appDisplayName = app.appName;
 
                     return (
                       <tr
-                        key={oa.id}
+                        key={app.id}
                         className="clickable-row"
                         onClick={() => {
-                          setSelectedOaId(oa.id);
+                          setSelectedAppId(app.id);
                           setShowKeyVisible(false);
                         }}
                       >
-                        {/* Cột 1: STT # */}
                         <td className="table-col-index">{rowIndex}</td>
-
-                        {/* Cột 2: Tên ứng dụng */}
                         <td>
                           <div>
                             <span
                               className="table-cell-link"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setSelectedOaId(oa.id);
+                                setSelectedAppId(app.id);
                                 setShowKeyVisible(false);
                               }}
                             >
-                              {oa.oaName}
+                              {appDisplayName}
                             </span>
                             <div style={{ fontSize: 11, color: '#64748b', marginTop: 2 }}>
-                              Mã OA: {oa.oaId || 'Chưa cập nhật'}
+                              Mã OA: {app.oaId || 'Chưa cập nhật'}
                             </div>
                           </div>
                         </td>
-
-                        {/* Cột 3: Trạng thái */}
                         <td style={{ textAlign: 'center' }}>
-                          {oa.status === 'ACTIVE' ? (
+                          {app.status === 'ACTIVE' ? (
                             <span className="badge-active-pill">Đang hoạt động</span>
                           ) : (
                             <span className="badge-inactive-pill">Tạm dừng</span>
                           )}
                         </td>
-
-                        {/* Cột 4: Loại ứng dụng */}
                         <td>
-                          {oa.isSystem ? (
+                          {app.isSystem ? (
                             <span className="badge badge-primary">Hệ thống</span>
                           ) : (
                             <span className="badge badge-success">Cá nhân</span>
                           )}
                         </td>
-
-                        {/* Cột 5: Khóa API Key */}
                         <td onClick={(e) => e.stopPropagation()}>
-                          {oa.apiKey ? (
+                          {app.apiKey ? (
                             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                               <code
                                 style={{
@@ -651,14 +646,14 @@ export default function CustomerOAInfo() {
                                 }}
                                 title={apiKeyVal}
                               >
-                                {oa.apiKey.apiKey ? `${oa.apiKey.apiKey.substring(0, 14)}••••` : `${oa.apiKey.prefix}••••••••`}
+                                {app.apiKey.apiKey ? `${app.apiKey.apiKey.substring(0, 14)}••••` : `${app.apiKey.prefix}••••••••`}
                               </code>
                               <button
                                 type="button"
                                 className={`btn btn-sm ${isCopied ? 'btn-success' : 'btn-secondary'}`}
                                 style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: 4, height: 26 }}
                                 title="Sao chép toàn bộ API Key"
-                                onClick={() => handleCopyText(oa.apiKey?.apiKey || oa.apiKey?.prefix, 'row-key', oa.id)}
+                                onClick={() => handleCopyText(app.apiKey?.apiKey || app.apiKey?.prefix, 'row-key', app.id)}
                               >
                                 {isCopied ? <Check size={13} weight="bold" /> : <CopySimple size={13} />}
                                 <span style={{ fontSize: 11 }}>{isCopied ? 'Đã chép' : 'Chép'}</span>
@@ -670,15 +665,11 @@ export default function CustomerOAInfo() {
                             </span>
                           )}
                         </td>
-
-                        {/* Cột 6: Mẫu tin */}
                         <td style={{ textAlign: 'center' }}>
                           <span className="badge badge-neutral">
-                            {oa.templates?.length || 0} mẫu
+                            {app.templates?.length || 0} mẫu
                           </span>
                         </td>
-
-                        {/* Cột 7: Thao tác */}
                         <td style={{ textAlign: 'right' }}>
                           <button
                             type="button"
@@ -693,7 +684,7 @@ export default function CustomerOAInfo() {
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedOaId(oa.id);
+                              setSelectedAppId(app.id);
                               setShowKeyVisible(false);
                             }}
                           >
@@ -712,7 +703,7 @@ export default function CustomerOAInfo() {
               currentPage={page}
               totalPages={totalPages}
               pageSize={pageSize}
-              totalItems={filteredOas.length}
+              totalItems={filteredApps.length}
               onPageChange={setPage}
               onPageSizeChange={(newSize) => {
                 setPageSize(newSize);

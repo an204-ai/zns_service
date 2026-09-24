@@ -3,9 +3,10 @@ const { encrypt, decrypt } = require('../utils/crypto');
 const fptAdapter = require('./fptAdapter');
 
 /**
- * Create a new OA config and sync from FPT
+ * Create a new App config and sync from FPT
  */
-async function createOAConfig({ userId, oaName, fptAppId, fptSecretKey, isSystem = false }) {
+async function createAppConfig({ userId, appName, fptAppId, fptSecretKey, isSystem = false }) {
+  const finalAppName = appName?.trim() || 'Ứng dụng Zalo';
   // Encrypt secret key before storing
   const encrypted = encrypt(fptSecretKey);
 
@@ -21,18 +22,18 @@ async function createOAConfig({ userId, oaName, fptAppId, fptSecretKey, isSystem
     }
     // If network connection error / timeout (e.g. FPT firewall has not whitelisted local IP yet)
     connectionWarning = error.message;
-    console.warn('[createOAConfig Network Warning]:', error.message);
+    console.warn('[createAppConfig Network Warning]:', error.message);
   }
 
-  const oaConfig = await prisma.fptAppConfig.create({
+  const appConfig = await prisma.fptAppConfig.create({
     data: {
       userId: userId || null,
-      oaName,
+      appName: finalAppName,
       oaId: oaInfo?.oa_id || null,
       fptAppId,
       fptSecretKeyEncrypted: encrypted,
       isSystem,
-      oaInfo: oaInfo || { name: oaName, note: connectionWarning || 'Chờ kết nối FPT ZBS' },
+      oaInfo: oaInfo || { name: finalAppName, note: connectionWarning || 'Chờ kết nối FPT ZBS' },
       syncedAt: new Date(),
     },
   });
@@ -40,24 +41,24 @@ async function createOAConfig({ userId, oaName, fptAppId, fptSecretKey, isSystem
   // Auto-sync templates if FPT connection succeeded
   if (oaInfo) {
     try {
-      await syncTemplates(oaConfig.id, fptAppId, fptSecretKey);
+      await syncTemplates(appConfig.id, fptAppId, fptSecretKey);
     } catch (err) {
-      console.warn('Lỗi đồng bộ template khi tạo OA:', err.message);
+      console.warn('Lỗi đồng bộ template khi tạo Ứng dụng:', err.message);
     }
   }
 
-  // Auto-create API Key for this OA
+  // Auto-create API Key for this App
   if (userId) {
     try {
       const apiKeyService = require('./apiKeyService');
-      await apiKeyService.getOrCreateApiKeyForOA(userId, oaConfig.id, `Khóa API - ${oaName}`);
+      await apiKeyService.getOrCreateApiKeyForApp(userId, appConfig.id, `Khóa API - ${finalAppName}`);
     } catch (err) {
-      console.error('Lỗi tự động tạo API Key khi kết nối OA:', err.message);
+      console.error('Lỗi tự động tạo API Key khi kết nối Ứng dụng:', err.message);
     }
   }
 
   return {
-    ...oaConfig,
+    ...appConfig,
     connectionWarning,
   };
 }
@@ -75,7 +76,6 @@ async function syncTemplates(appConfigId, appId, secretKey) {
     if (result.status !== 1 || !result.data || result.data.length === 0) break;
 
     for (const tpl of result.data) {
-      // Get template detail
       let detail = {};
       try {
         const detailResult = await fptAdapter.getTemplateDetail(appId, secretKey, tpl.id);
@@ -129,9 +129,9 @@ async function syncTemplates(appConfigId, appId, secretKey) {
 }
 
 /**
- * Get all OA configs with optional filtering (supports type: all, system, private, unassigned)
+ * Get all App configs with optional filtering (supports type: all, system, private, unassigned)
  */
-async function getAllOAConfigs({ userId, status, isSystem, type, search, page = 1, limit = 50 } = {}) {
+async function getAllAppConfigs({ userId, status, isSystem, type, search, page = 1, limit = 50 } = {}) {
   const where = {};
   if (userId) where.userId = userId;
   if (status) where.status = status;
@@ -150,13 +150,13 @@ async function getAllOAConfigs({ userId, status, isSystem, type, search, page = 
   if (search && search.trim()) {
     const s = search.trim();
     where.OR = [
-      { oaName: { contains: s, mode: 'insensitive' } },
+      { appName: { contains: s, mode: 'insensitive' } },
       { fptAppId: { contains: s, mode: 'insensitive' } },
       { oaId: { contains: s, mode: 'insensitive' } },
     ];
   }
 
-  const [data, total] = await Promise.all([
+  const [rawList, total] = await Promise.all([
     prisma.fptAppConfig.findMany({
       where,
       include: {
@@ -178,17 +178,17 @@ async function getAllOAConfigs({ userId, status, isSystem, type, search, page = 
     prisma.fptAppConfig.count({ where }),
   ]);
 
-  return { data, total, page, totalPages: Math.ceil(total / limit) };
+  return { data: rawList, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
- * Get all System OA configs
+ * Get all System App configs
  */
-async function getSystemOAConfigs({ status, page = 1, limit = 50 } = {}) {
+async function getSystemAppConfigs({ status, page = 1, limit = 50 } = {}) {
   const where = { isSystem: true };
   if (status) where.status = status;
 
-  const [data, total] = await Promise.all([
+  const [rawList, total] = await Promise.all([
     prisma.fptAppConfig.findMany({
       where,
       include: {
@@ -206,7 +206,7 @@ async function getSystemOAConfigs({ status, page = 1, limit = 50 } = {}) {
     prisma.fptAppConfig.count({ where }),
   ]);
 
-  return { data, total, page, totalPages: Math.ceil(total / limit) };
+  return { data: rawList, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
@@ -215,15 +215,13 @@ async function getSystemOAConfigs({ status, page = 1, limit = 50 } = {}) {
  * 2. Active Private Apps that have no user assigned yet (userId IS NULL)
  */
 async function getAvailableAppsForCustomer(userId) {
-  // Find IDs of system apps already assigned to this user
   const userAssignments = await prisma.customerAppAssignment.findMany({
     where: { userId },
     select: { appConfigId: true },
   });
   const assignedSystemAppIds = userAssignments.map(a => a.appConfigId);
 
-  const [systemApps, privateApps] = await Promise.all([
-    // Active System Apps not yet assigned to this customer
+  const [rawSystemApps, rawPrivateApps] = await Promise.all([
     prisma.fptAppConfig.findMany({
       where: {
         isSystem: true,
@@ -232,16 +230,15 @@ async function getAvailableAppsForCustomer(userId) {
       },
       select: {
         id: true,
-        oaName: true,
+        appName: true,
         oaId: true,
         fptAppId: true,
         isSystem: true,
         status: true,
         _count: { select: { templates: true, assignments: true } },
       },
-      orderBy: { oaName: 'asc' },
+      orderBy: { appName: 'asc' },
     }),
-    // Active Private Apps NOT yet assigned to ANY customer (userId is null)
     prisma.fptAppConfig.findMany({
       where: {
         isSystem: false,
@@ -250,31 +247,29 @@ async function getAvailableAppsForCustomer(userId) {
       },
       select: {
         id: true,
-        oaName: true,
+        appName: true,
         oaId: true,
         fptAppId: true,
         isSystem: true,
         status: true,
         _count: { select: { templates: true } },
       },
-      orderBy: { oaName: 'asc' },
+      orderBy: { appName: 'asc' },
     }),
   ]);
 
   return {
-    systemApps,
-    privateApps,
+    systemApps: rawSystemApps,
+    privateApps: rawPrivateApps,
     allAvailable: [
-      ...systemApps.map(a => ({ ...a, category: 'SYSTEM' })),
-      ...privateApps.map(a => ({ ...a, category: 'PRIVATE' })),
+      ...rawSystemApps.map(a => ({ ...a, category: 'SYSTEM' })),
+      ...rawPrivateApps.map(a => ({ ...a, category: 'PRIVATE' })),
     ],
   };
 }
 
 /**
  * Assign an App (System or Private) to a customer
- * System app -> can be assigned to multiple customers (via CustomerAppAssignment)
- * Private app -> can ONLY be assigned to 1 customer (userId set on FptAppConfig)
  */
 async function assignAppToCustomer({ userId, appConfigId }) {
   const app = await prisma.fptAppConfig.findUnique({
@@ -290,7 +285,6 @@ async function assignAppToCustomer({ userId, appConfigId }) {
   }
 
   if (app.isSystem) {
-    // System app -> many customers allowed via customerAppAssignment
     await prisma.customerAppAssignment.upsert({
       where: {
         userId_appConfigId: { userId, appConfigId },
@@ -299,7 +293,6 @@ async function assignAppToCustomer({ userId, appConfigId }) {
       update: {},
     });
   } else {
-    // Private app -> ONLY 1 customer allowed!
     if (app.userId && app.userId !== userId) {
       throw Object.assign(
         new Error('Ứng dụng cá nhân này đã được gán cho một khách hàng khác! Mỗi ứng dụng cá nhân chỉ được gán cho duy nhất 1 khách hàng.'),
@@ -312,8 +305,7 @@ async function assignAppToCustomer({ userId, appConfigId }) {
     });
   }
 
-  // Auto-create API Key for this customer and app
-  const appName = app.oaName || 'Ứng dụng Zalo';
+  const appName = app.appName || 'Ứng dụng Zalo';
   try {
     const apiKeyService = require('./apiKeyService');
     await apiKeyService.getOrCreateApiKeyForApp(
@@ -339,7 +331,6 @@ async function unassignAppFromCustomer({ userId, appConfigId }) {
     throw Object.assign(new Error('Ứng dụng không tồn tại'), { statusCode: 404 });
   }
 
-  // Delete API key linked to this app for this customer
   try {
     await prisma.apiKey.deleteMany({ where: { userId, appConfigId } });
   } catch (err) {
@@ -351,7 +342,6 @@ async function unassignAppFromCustomer({ userId, appConfigId }) {
       where: { userId, appConfigId },
     });
   } else {
-    // If it was assigned to this user, return to unassigned pool (userId = null)
     if (app.userId === userId) {
       await prisma.fptAppConfig.update({
         where: { id: appConfigId },
@@ -364,23 +354,9 @@ async function unassignAppFromCustomer({ userId, appConfigId }) {
 }
 
 /**
- * Assign a system App to a customer (wrapper for backward compatibility)
+ * Get App config by ID
  */
-async function assignSystemOA({ userId, appConfigId }) {
-  return assignAppToCustomer({ userId, appConfigId });
-}
-
-/**
- * Unassign a system App from a customer (wrapper for backward compatibility)
- */
-async function unassignSystemOA({ userId, appConfigId }) {
-  return unassignAppFromCustomer({ userId, appConfigId });
-}
-
-/**
- * Get App config by ID with decrypted secret key
- */
-async function getOAConfigById(id) {
+async function getAppConfigById(id) {
   const config = await prisma.fptAppConfig.findUnique({
     where: { id },
     include: {
@@ -412,12 +388,11 @@ async function getDecryptedCredentials(appConfigId) {
 /**
  * Resync App info and templates from FPT
  */
-async function resyncOAConfig(appConfigId) {
+async function resyncAppConfig(appConfigId) {
   const config = await prisma.fptAppConfig.findUnique({ where: { id: appConfigId } });
   if (!config) throw Object.assign(new Error('Không tìm thấy ứng dụng liên kết'), { statusCode: 404 });
 
   const secretKey = decrypt(config.fptSecretKeyEncrypted);
-
   const oaInfo = await fptAdapter.getOAInfo(config.fptAppId, secretKey);
 
   await prisma.fptAppConfig.update({
@@ -434,16 +409,16 @@ async function resyncOAConfig(appConfigId) {
 }
 
 /**
- * Update OA config status
+ * Update App config status
  */
-async function updateOAStatus(id, status) {
+async function updateAppStatus(id, status) {
   return prisma.fptAppConfig.update({ where: { id }, data: { status } });
 }
 
 /**
- * Delete an OA config (and cascade assignments, templates, api keys)
+ * Delete an App config (and cascade)
  */
-async function deleteOAConfig(id) {
+async function deleteAppConfig(id) {
   const config = await prisma.fptAppConfig.findUnique({ where: { id } });
   if (!config) throw Object.assign(new Error('Ứng dụng liên kết không tồn tại'), { statusCode: 404 });
 
@@ -458,15 +433,15 @@ async function deleteOAConfig(id) {
 }
 
 /**
- * Update an existing OA config
+ * Update an existing App config
  */
-async function updateOAConfig(id, { oaName, fptAppId, fptSecretKey, status }) {
+async function updateAppConfig(id, { appName, fptAppId, fptSecretKey, status }) {
   const existing = await prisma.fptAppConfig.findUnique({ where: { id } });
   if (!existing) throw Object.assign(new Error('Ứng dụng liên kết không tồn tại'), { statusCode: 404 });
 
   const data = {};
-  if (oaName !== undefined && oaName.trim()) {
-    data.oaName = oaName.trim();
+  if (appName !== undefined && appName.trim()) {
+    data.appName = appName.trim();
   }
   if (fptAppId !== undefined && fptAppId.trim()) {
     data.fptAppId = fptAppId.trim();
@@ -478,13 +453,12 @@ async function updateOAConfig(id, { oaName, fptAppId, fptSecretKey, status }) {
     data.status = status;
   }
 
-  // If App ID or Secret Key changed, try to validate with FPT and refresh oaId
   const effectiveAppId = data.fptAppId || existing.fptAppId;
   let effectiveSecretKey = null;
   try {
     effectiveSecretKey = fptSecretKey && fptSecretKey.trim() ? fptSecretKey.trim() : decrypt(existing.fptSecretKeyEncrypted);
   } catch (err) {
-    console.warn('Decrypt error during updateOAConfig:', err.message);
+    console.warn('Decrypt error during updateAppConfig:', err.message);
   }
 
   if (effectiveSecretKey && (data.fptAppId || (fptSecretKey && fptSecretKey.trim()))) {
@@ -509,7 +483,7 @@ async function updateOAConfig(id, { oaName, fptAppId, fptSecretKey, status }) {
 /**
  * Get ZNS Quota for an App config
  */
-async function getOAQuota(appConfigId, forceRefresh = false) {
+async function getAppQuota(appConfigId, forceRefresh = false) {
   const { appId, secretKey } = await getDecryptedCredentials(appConfigId);
   return fptAdapter.getQuota(appId, secretKey, forceRefresh);
 }
@@ -520,7 +494,6 @@ async function getOAQuota(appConfigId, forceRefresh = false) {
 async function getTemplateRatings(appConfigId, templateId, { fromTime, toTime, page = 1 }) {
   const { appId, secretKey } = await getDecryptedCredentials(appConfigId);
 
-  // Default dates: last 30 days if not provided
   let from = fromTime;
   let to = toTime;
   if (!from || !to) {
@@ -538,7 +511,6 @@ async function getTemplateRatings(appConfigId, templateId, { fromTime, toTime, p
     page,
   });
 
-  // Calculate rating stats
   let avgRate = 0;
   const list = result?.data || [];
   if (Array.isArray(list) && list.length > 0) {
@@ -559,7 +531,6 @@ async function getTemplateRatings(appConfigId, templateId, { fromTime, toTime, p
  * Get live detailed template data from FPT and update DB cache
  */
 async function getTemplateLiveDetail(appConfigId, templateId, forceRefresh = false) {
-  // 1. Kiểm tra dữ liệu mẫu tin đã đồng bộ trong Database trước (phản hồi siêu nhanh < 15ms)
   const dbTemplate = await prisma.znsTemplate.findFirst({
     where: {
       fptAppConfigId: appConfigId,
@@ -567,12 +538,11 @@ async function getTemplateLiveDetail(appConfigId, templateId, forceRefresh = fal
     },
     include: {
       fptAppConfig: {
-        select: { id: true, oaName: true, oaId: true, isSystem: true },
+        select: { id: true, appName: true, oaId: true, isSystem: true },
       },
     },
   });
 
-  // Nếu DB đã có thông tin mẫu tin và không yêu cầu cưỡng chế làm mới, trả về ngay lập tức (< 10ms)
   if (dbTemplate && !forceRefresh) {
     return {
       ...dbTemplate,
@@ -581,7 +551,6 @@ async function getTemplateLiveDetail(appConfigId, templateId, forceRefresh = fal
     };
   }
 
-  // 2. Nếu chưa có hoặc yêu cầu làm mới (forceRefresh = true), gọi sang FPT
   const { appId, secretKey } = await getDecryptedCredentials(appConfigId);
   let detail = null;
   let liveDetailError = null;
@@ -636,7 +605,7 @@ async function getTemplateLiveDetail(appConfigId, templateId, forceRefresh = fal
     },
     include: {
       fptAppConfig: {
-        select: { id: true, oaName: true, oaId: true, isSystem: true },
+        select: { id: true, appName: true, oaId: true, isSystem: true },
       },
     },
   });
@@ -647,31 +616,29 @@ async function getTemplateLiveDetail(appConfigId, templateId, forceRefresh = fal
     throw error;
   }
 
+  const resTemplate = updatedTemplate || dbTemplate;
   return {
-    ...(updatedTemplate || dbTemplate),
+    ...resTemplate,
     liveDetail: detail,
     liveDetailError,
   };
 }
 
 module.exports = {
-  createOAConfig,
+  createAppConfig,
   syncTemplates,
-  getAllOAConfigs,
-  getSystemOAConfigs,
+  getAllAppConfigs,
+  getSystemAppConfigs,
   getAvailableAppsForCustomer,
   assignAppToCustomer,
   unassignAppFromCustomer,
-  assignSystemOA,
-  unassignSystemOA,
-  getOAConfigById,
+  getAppConfigById,
   getDecryptedCredentials,
-  resyncOAConfig,
-  updateOAStatus,
-  deleteOAConfig,
-  updateOAConfig,
-  getOAQuota,
+  resyncAppConfig,
+  updateAppStatus,
+  deleteAppConfig,
+  updateAppConfig,
+  getAppQuota,
   getTemplateRatings,
   getTemplateLiveDetail,
 };
-

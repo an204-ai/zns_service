@@ -18,7 +18,7 @@ enum UserStatus {
   BLOCKED
 }
 
-enum OAStatus {
+enum AppStatus {
   ACTIVE
   INACTIVE
 }
@@ -73,11 +73,11 @@ model User {
 model FptAppConfig {
   id                    String    @id @default(uuid()) @db.Uuid
   userId                String?   @map("user_id") @db.Uuid
-  oaName                String    @map("oa_name") @db.VarChar(255)
+  appName               String    @map("app_name") @db.VarChar(255)
   oaId                  String?   @map("oa_id") @db.VarChar(100)
   fptAppId              String    @map("fpt_app_id") @db.VarChar(255)
   fptSecretKeyEncrypted String    @map("fpt_secret_key_encrypted") @db.Text
-  status                OAStatus  @default(ACTIVE)
+  status                AppStatus @default(ACTIVE)
   isSystem              Boolean   @default(false) @map("is_system")
   oaInfo                Json?     @map("oa_info") @db.JsonB
   syncedAt              DateTime? @map("synced_at")

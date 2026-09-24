@@ -47,17 +47,12 @@ router.post('/api-keys', customer.createApiKey);
 router.patch('/api-keys/:id/toggle', customer.toggleApiKey);
 router.delete('/api-keys/:id', customer.deleteApiKey);
 
-// OA & App Configs & Templates
-router.get('/oa-configs', customer.listOAConfigs);
-router.get('/app-configs', customer.listOAConfigs);
-router.get('/oa-configs/:id/quota', customer.getOAQuota);
-router.get('/app-configs/:id/quota', customer.getOAQuota);
-router.get('/oa-configs/:oaId/templates/:templateId/ratings', customer.getTemplateRatings);
-router.get('/app-configs/:oaId/templates/:templateId/ratings', customer.getTemplateRatings);
-router.get('/oa-configs/:oaId/templates/:templateId/detail', customer.getTemplateDetail);
-router.get('/app-configs/:oaId/templates/:templateId/detail', customer.getTemplateDetail);
-router.post('/oa-configs/:id/regenerate-key', customer.regenerateOAKey);
-router.post('/app-configs/:id/regenerate-key', customer.regenerateOAKey);
+// App Configs & Templates
+router.get('/app-configs', customer.listAppConfigs);
+router.get('/app-configs/:id/quota', customer.getAppQuota);
+router.get('/app-configs/:appId/templates/:templateId/ratings', customer.getTemplateRatings);
+router.get('/app-configs/:appId/templates/:templateId/detail', customer.getTemplateDetail);
+router.post('/app-configs/:id/regenerate-key', customer.regenerateAppKey);
 
 // Send message
 router.post('/send-message', customer.sendMessage);

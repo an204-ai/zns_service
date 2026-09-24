@@ -18,7 +18,7 @@ export default function CustomerCampaigns() {
 
   // Form states
   const [campaignName, setCampaignName] = useState('');
-  const [oaId, setOaId] = useState('');
+  const [appId, setAppId] = useState('');
   const [templateId, setTemplateId] = useState('');
   const [file, setFile] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -30,14 +30,14 @@ export default function CustomerCampaigns() {
     queryFn: () => api.get('/customer/campaigns', { params: { page, limit: 15 } }).then(r => r.data),
   });
 
-  // Fetch OA configs & templates for creation
-  const { data: oaConfigs } = useQuery({
-    queryKey: ['customer-oa-configs'],
-    queryFn: () => api.get('/customer/oa-configs').then(r => r.data.data),
+  // Fetch App configs & templates for creation
+  const { data: appConfigs } = useQuery({
+    queryKey: ['customer-app-configs'],
+    queryFn: () => api.get('/customer/app-configs').then(r => r.data.data),
   });
 
-  const selectedOA = oaConfigs?.find(o => o.id === oaId);
-  const selectedTemplate = selectedOA?.templates?.find(t => String(t.templateId) === String(templateId));
+  const selectedApp = appConfigs?.find(o => o.id === appId);
+  const selectedTemplate = selectedApp?.templates?.find(t => String(t.templateId) === String(templateId));
 
   useSocket((event) => {
     if (event === 'campaign:update') refetch();
@@ -63,7 +63,7 @@ export default function CustomerCampaigns() {
   const handleCloseModal = () => {
     setShowModal(false);
     setCampaignName('');
-    setOaId('');
+    setAppId('');
     setTemplateId('');
     setFile(null);
     setErrorMsg('');
@@ -95,8 +95,8 @@ export default function CustomerCampaigns() {
       setErrorMsg('Vui lòng nhập tên chiến dịch');
       return;
     }
-    if (!oaId) {
-      setErrorMsg('Vui lòng chọn Official Account');
+    if (!appId) {
+      setErrorMsg('Vui lòng chọn ứng dụng gửi tin');
       return;
     }
     if (!templateId) {
@@ -110,7 +110,7 @@ export default function CustomerCampaigns() {
 
     const formData = new FormData();
     formData.append('name', campaignName.trim());
-    formData.append('fptAppConfigId', oaId);
+    formData.append('fptAppConfigId', appId);
     formData.append('templateId', templateId);
     formData.append('file', file);
 
@@ -168,7 +168,7 @@ export default function CustomerCampaigns() {
                     return (
                       <tr key={c.id}>
                         <td className="table-cell-bold">{c.name}</td>
-                        <td style={{ fontSize: 'var(--font-size-sm)' }}>{c.fptAppConfig?.oaName || '—'}</td>
+                        <td style={{ fontSize: 'var(--font-size-sm)' }}>{c.fptAppConfig?.appName || '—'}</td>
                         <td>{c.totalMessages}</td>
                         <td style={{ color: 'var(--color-success)', fontWeight: 600 }}>{c.successCount}</td>
                         <td style={{ color: 'var(--color-danger)', fontWeight: 600 }}>{c.failedCount}</td>
@@ -259,28 +259,28 @@ export default function CustomerCampaigns() {
                 <div className="form-group">
                   <label className="form-label">Chọn ứng dụng gửi tin *</label>
                   <CustomSelect
-                    value={oaId}
+                    value={appId}
                     onChange={(val) => {
-                      setOaId(val);
+                      setAppId(val);
                       setTemplateId('');
                     }}
                     placeholder="Chọn ứng dụng gửi tin"
-                    options={(oaConfigs || []).map(o => ({
+                    options={(appConfigs || []).map(o => ({
                       value: o.id,
-                      label: o.oaName,
+                      label: o.appName,
                       sublabel: o.isSystem ? 'Hệ thống' : 'Cá nhân',
                     }))}
                   />
                 </div>
 
-                {oaId && (
+                {appId && (
                   <div className="form-group">
                     <label className="form-label">Chọn mẫu tin nhắn (Template) *</label>
                     <CustomSelect
                       value={templateId}
                       onChange={setTemplateId}
                       placeholder="Chọn template"
-                      options={(selectedOA?.templates || []).map(t => ({
+                      options={(selectedApp?.templates || []).map(t => ({
                         value: t.templateId,
                         label: t.templateName,
                         sublabel: `ID: ${t.templateId}`,

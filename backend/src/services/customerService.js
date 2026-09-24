@@ -1,11 +1,11 @@
 const bcrypt = require('bcryptjs');
 const { prisma } = require('../config/database');
-const oaConfigService = require('./oaConfigService');
+const appConfigService = require('./appConfigService');
 
 /**
- * Create a new customer with optional OA config
+ * Create a new customer with optional App config
  */
-async function createCustomer({ email, password, fullName, companyName, phone, oaType, systemOaId, oaName, fptAppId, fptSecretKey }) {
+async function createCustomer({ email, password, fullName, companyName, phone, appType, systemAppId, appName, fptAppId, fptSecretKey }) {
   const passwordHash = await bcrypt.hash(password, 12);
 
   const customer = await prisma.user.create({
@@ -30,55 +30,59 @@ async function createCustomer({ email, password, fullName, companyName, phone, o
     },
   });
 
-  let oaConfig = null;
-  let oaError = null;
+  let appConfig = null;
+  let appError = null;
 
-  // 1. Gán OA Hệ thống nếu chọn dùng OA Hệ thống
-  if (oaType === 'SYSTEM' && systemOaId) {
+  const targetType = appType;
+  const targetSystemId = systemAppId;
+  const targetAppName = appName?.trim() || fullName || 'Ứng dụng Khách hàng';
+
+  // 1. Gán App Hệ thống nếu chọn dùng App Hệ thống
+  if (targetType === 'SYSTEM' && targetSystemId) {
     try {
-      await oaConfigService.assignSystemOA({ userId: customer.id, appConfigId: systemOaId });
-      oaConfig = { type: 'SYSTEM', id: systemOaId };
+      await appConfigService.assignAppToCustomer({ userId: customer.id, appConfigId: targetSystemId });
+      appConfig = { type: 'SYSTEM', id: targetSystemId };
     } catch (err) {
-      console.error('Lỗi gán OA hệ thống cho khách hàng mới:', err.message);
-      oaError = err.message || 'Không thể gán OA Hệ thống';
+      console.error('Lỗi gán Ứng dụng hệ thống cho khách hàng mới:', err.message);
+      appError = err.message || 'Không thể gán Ứng dụng Hệ thống';
     }
   }
-  // 2. Tạo OA riêng nếu chọn cấu hình OA riêng
-  else if (oaType === 'PRIVATE' && fptAppId && fptSecretKey) {
+  // 2. Tạo App riêng nếu chọn cấu hình App riêng
+  else if (targetType === 'PRIVATE' && fptAppId && fptSecretKey) {
     try {
-      oaConfig = await oaConfigService.createOAConfig({
+      appConfig = await appConfigService.createAppConfig({
         userId: customer.id,
-        oaName: oaName?.trim() || fullName || 'OA Khách hàng',
+        appName: targetAppName,
         fptAppId: fptAppId.trim(),
         fptSecretKey: fptSecretKey.trim(),
         isSystem: false,
       });
     } catch (err) {
-      console.error('Lỗi khởi tạo OA riêng cho khách hàng mới:', err.message);
-      oaError = err.message || 'Không thể kết nối FPT. Vui lòng kiểm tra lại App ID và Secret Key';
+      console.error('Lỗi khởi tạo Ứng dụng riêng cho khách hàng mới:', err.message);
+      appError = err.message || 'Không thể kết nối FPT. Vui lòng kiểm tra lại App ID và Secret Key';
     }
   }
   // Fallback tương thích nếu truyền thẳng fptAppId & fptSecretKey
   else if (fptAppId && fptSecretKey) {
     try {
-      oaConfig = await oaConfigService.createOAConfig({
+      appConfig = await appConfigService.createAppConfig({
         userId: customer.id,
-        oaName: oaName?.trim() || fullName || 'OA Khách hàng',
+        appName: targetAppName,
         fptAppId: fptAppId.trim(),
         fptSecretKey: fptSecretKey.trim(),
         isSystem: false,
       });
     } catch (err) {
-      console.error('Lỗi khởi tạo OA cho khách hàng mới:', err.message);
-      oaError = err.message || 'Không thể kết nối FPT. Vui lòng kiểm tra lại App ID và Secret Key';
+      console.error('Lỗi khởi tạo Ứng dụng cho khách hàng mới:', err.message);
+      appError = err.message || 'Không thể kết nối FPT. Vui lòng kiểm tra lại App ID và Secret Key';
     }
   }
 
-  return { ...customer, oaConfig, oaError };
+  return { ...customer, appConfig, appError };
 }
 
 /**
- * Get all customers with pagination including OA details
+ * Get all customers with pagination including App details
  */
 async function getCustomers({ search, status, page = 1, limit = 20 }) {
   const where = { role: 'CUSTOMER' };
@@ -105,7 +109,7 @@ async function getCustomers({ search, status, page = 1, limit = 20 }) {
         appConfigs: {
           select: {
             id: true,
-            oaName: true,
+            appName: true,
             oaId: true,
             fptAppId: true,
             status: true,
@@ -122,7 +126,7 @@ async function getCustomers({ search, status, page = 1, limit = 20 }) {
             appConfig: {
               select: {
                 id: true,
-                oaName: true,
+                appName: true,
                 oaId: true,
                 fptAppId: true,
                 status: true,
@@ -142,17 +146,7 @@ async function getCustomers({ search, status, page = 1, limit = 20 }) {
     prisma.user.count({ where }),
   ]);
 
-  // Map both appConfigs and oaConfigs for backward and forward compatibility
-  const formattedData = data.map((u) => ({
-    ...u,
-    oaConfigs: u.appConfigs,
-    systemOaAssignments: (u.systemAppAssignments || []).map((s) => ({
-      ...s,
-      oaConfig: s.appConfig,
-    })),
-  }));
-
-  return { data: formattedData, total, page, totalPages: Math.ceil(total / limit) };
+  return { data, total, page, totalPages: Math.ceil(total / limit) };
 }
 
 /**
@@ -174,7 +168,7 @@ async function getCustomerById(id) {
         where: { isSystem: false },
         select: {
           id: true,
-          oaName: true,
+          appName: true,
           oaId: true,
           fptAppId: true,
           status: true,
@@ -195,7 +189,7 @@ async function getCustomerById(id) {
           appConfig: {
             select: {
               id: true,
-              oaName: true,
+              appName: true,
               oaId: true,
               fptAppId: true,
               status: true,
@@ -218,17 +212,17 @@ async function getCustomerById(id) {
   if (!customer) return null;
 
   const apiKeyService = require('./apiKeyService');
-  const allOAs = [];
-  const privateApps = customer.appConfigs || customer.oaConfigs || [];
-  const systemApps = customer.systemAppAssignments || customer.systemOaAssignments || [];
+  const allApps = [];
+  const privateApps = customer.appConfigs || [];
+  const systemApps = customer.systemAppAssignments || [];
 
-  for (const oa of privateApps) {
-    let key = oa.apiKeys?.[0];
+  for (const app of privateApps) {
+    let key = app.apiKeys?.[0];
     if (!key) {
-      key = await apiKeyService.getOrCreateApiKeyForOA(id, oa.id, `Khóa API - ${oa.oaName}`);
+      key = await apiKeyService.getOrCreateApiKeyForApp(id, app.id, `Khóa API - ${app.appName}`);
     }
-    allOAs.push({
-      ...oa,
+    allApps.push({
+      ...app,
       type: 'PRIVATE',
       assignmentId: null,
       apiKey: key,
@@ -236,13 +230,13 @@ async function getCustomerById(id) {
   }
 
   for (const a of systemApps) {
-    const config = a.appConfig || a.oaConfig;
+    const config = a.appConfig;
     if (!config) continue;
     let key = config.apiKeys?.[0];
     if (!key) {
-      key = await apiKeyService.getOrCreateApiKeyForOA(id, config.id, `Khóa API - ${config.oaName}`);
+      key = await apiKeyService.getOrCreateApiKeyForApp(id, config.id, `Khóa API - ${config.appName}`);
     }
-    allOAs.push({
+    allApps.push({
       ...config,
       type: 'SYSTEM',
       assignmentId: a.id,
@@ -253,11 +247,9 @@ async function getCustomerById(id) {
 
   return {
     ...customer,
-    oaConfigs: privateApps,
     appConfigs: privateApps,
-    systemOaAssignments: systemApps,
     systemAppAssignments: systemApps,
-    allOAs,
+    allApps,
   };
 }
 
@@ -381,25 +373,25 @@ async function deleteCustomer(id) {
 /**
  * Create a private App for a customer
  */
-async function createCustomerPrivateOA(userId, { oaName, fptAppId, fptSecretKey }) {
-  const oa = await oaConfigService.createOAConfig({
+async function createCustomerPrivateApp(userId, { appName, fptAppId, fptSecretKey }) {
+  const app = await appConfigService.createAppConfig({
     userId,
-    oaName,
+    appName,
     fptAppId,
     fptSecretKey,
     isSystem: false,
   });
-  return oa;
+  return app;
 }
 
 /**
  * Delete a private app of a customer
  */
-async function deleteCustomerPrivateOA(userId, appConfigId) {
-  const oa = await prisma.fptAppConfig.findFirst({
+async function deleteCustomerPrivateApp(userId, appConfigId) {
+  const app = await prisma.fptAppConfig.findFirst({
     where: { id: appConfigId, userId, isSystem: false },
   });
-  if (!oa) throw Object.assign(new Error('Ứng dụng liên kết riêng không tồn tại hoặc không thuộc khách hàng này'), { statusCode: 404 });
+  if (!app) throw Object.assign(new Error('Ứng dụng liên kết riêng không tồn tại hoặc không thuộc khách hàng này'), { statusCode: 404 });
 
   return prisma.$transaction(async (tx) => {
     await tx.apiKey.deleteMany({ where: { appConfigId } });
@@ -414,7 +406,7 @@ async function deleteCustomerPrivateOA(userId, appConfigId) {
 /**
  * Regenerate API key for an App
  */
-async function regenerateOAKey(userId, appConfigId) {
+async function regenerateAppKey(userId, appConfigId) {
   const apiKeyService = require('./apiKeyService');
   return apiKeyService.regenerateApiKeyForApp(userId, appConfigId);
 }
@@ -428,7 +420,7 @@ module.exports = {
   updateProfile,
   changePassword,
   deleteCustomer,
-  createCustomerPrivateOA,
-  deleteCustomerPrivateOA,
-  regenerateOAKey,
+  createCustomerPrivateApp,
+  deleteCustomerPrivateApp,
+  regenerateAppKey,
 };

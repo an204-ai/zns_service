@@ -88,7 +88,7 @@ export default function AdminCustomerDetail() {
     onSuccess: () => {
       refetch();
       refetchAvailableApps();
-      queryClient.invalidateQueries(['admin-oa-configs']);
+      queryClient.invalidateQueries(['admin-app-configs']);
       setShowAssignModal(false);
       setSelectedAppId('');
       toast.success('Đã gán ứng dụng và tự động cấp API Key cho khách hàng!');
@@ -100,11 +100,11 @@ export default function AdminCustomerDetail() {
 
   // Unassign App mutation (Unassigns System App or returns Private App to unassigned pool)
   const unassignAppMutation = useMutation({
-    mutationFn: (oaId) => api.delete(`/admin/customers/${id}/unassign-app/${oaId}`),
+    mutationFn: (appId) => api.delete(`/admin/customers/${id}/unassign-app/${appId}`),
     onSuccess: () => {
       refetch();
       refetchAvailableApps();
-      queryClient.invalidateQueries(['admin-oa-configs']);
+      queryClient.invalidateQueries(['admin-app-configs']);
       toast.success('Đã gỡ ứng dụng khỏi khách hàng thành công');
     },
     onError: (err) => {
@@ -115,7 +115,7 @@ export default function AdminCustomerDetail() {
 
   // Regenerate API Key mutation
   const regenerateKeyMutation = useMutation({
-    mutationFn: (oaId) => api.post(`/admin/customers/${id}/oas/${oaId}/regenerate-key`),
+    mutationFn: (appId) => api.post(`/admin/customers/${id}/apps/${appId}/regenerate-key`),
     onSuccess: (r) => {
       refetch();
       setNewlyGeneratedKey(r.data.data.apiKey);
@@ -128,7 +128,7 @@ export default function AdminCustomerDetail() {
 
   // Sync templates mutation
   const syncMutation = useMutation({
-    mutationFn: (oaId) => api.post(`/admin/oa-configs/${oaId}/sync`),
+    mutationFn: (appId) => api.post(`/admin/app-configs/${appId}/sync`),
     onSuccess: (r) => {
       refetch();
       toast.success(`Đồng bộ thành công! Có ${r.data.data.templatesCount || 0} mẫu tin.`);
@@ -336,30 +336,30 @@ export default function AdminCustomerDetail() {
               </tr>
             </thead>
             <tbody>
-              {(customer.allOAs || []).map(oa => (
-                <tr key={oa.id}>
+              {(customer.allApps || []).map(app => (
+                <tr key={app.id}>
                   <td>
                     <div>
-                      <div className="table-cell-bold">{oa.oaName}</div>
-                      {oa.oaId && (
+                      <div className="table-cell-bold">{app.appName}</div>
+                      {app.oaId && (
                         <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                          OA ID: {oa.oaId}
+                          OA ID: {app.oaId}
                         </div>
                       )}
                     </div>
                   </td>
                   <td>
-                    {oa.type === 'SYSTEM' ? (
+                    {app.type === 'SYSTEM' ? (
                       <span className="badge badge-primary">Hệ thống</span>
                     ) : (
                       <span className="badge badge-success">Cá nhân</span>
                     )}
                   </td>
                   <td style={{ fontFamily: 'monospace', fontSize: 'var(--font-size-xs)' }}>
-                    {oa.fptAppId}
+                    {app.fptAppId}
                   </td>
                   <td>
-                    {oa.apiKey ? (
+                    {app.apiKey ? (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <code
                           style={{
@@ -372,7 +372,7 @@ export default function AdminCustomerDetail() {
                             color: '#1e293b',
                           }}
                         >
-                          {oa.apiKey.prefix}...
+                          {app.apiKey.prefix}...
                         </code>
                         <button
                           type="button"
@@ -380,8 +380,9 @@ export default function AdminCustomerDetail() {
                           title="Cấp lại API Key ngẫu nhiên mới cho ứng dụng này"
                           disabled={regenerateKeyMutation.isPending}
                           onClick={() => {
-                            if (window.confirm(`Cấp lại mã API Key mới cho ứng dụng "${oa.oaName}"? Mã cũ sẽ lập tức bị vô hiệu hóa.`)) {
-                              regenerateKeyMutation.mutate(oa.id);
+                            const name = app.appName;
+                            if (window.confirm(`Cấp lại mã API Key mới cho ứng dụng "${name}"? Mã cũ sẽ lập tức bị vô hiệu hóa.`)) {
+                              regenerateKeyMutation.mutate(app.id);
                             }
                           }}
                         >
@@ -396,12 +397,12 @@ export default function AdminCustomerDetail() {
                   </td>
                   <td>
                     <span className="badge badge-neutral">
-                      {oa._count?.templates || 0} template
+                      {app._count?.templates || 0} template
                     </span>
                   </td>
                   <td>
-                    <span className={`badge ${oa.status === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}`}>
-                      {oa.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
+                    <span className={`badge ${app.status === 'ACTIVE' ? 'badge-success' : 'badge-neutral'}`}>
+                      {app.status === 'ACTIVE' ? 'Hoạt động' : 'Tạm dừng'}
                     </span>
                   </td>
                   <td style={{ textAlign: 'right' }}>
@@ -411,7 +412,7 @@ export default function AdminCustomerDetail() {
                         className="btn btn-sm btn-secondary"
                         title="Đồng bộ mẫu tin từ FPT"
                         disabled={syncMutation.isPending}
-                        onClick={() => syncMutation.mutate(oa.id)}
+                        onClick={() => syncMutation.mutate(app.id)}
                       >
                         <ArrowsClockwise size={13} className={syncMutation.isPending ? 'spin' : ''} />
                       </button>
@@ -419,13 +420,14 @@ export default function AdminCustomerDetail() {
                       <button
                         type="button"
                         className="btn btn-sm btn-danger"
-                        title={oa.type === 'SYSTEM' ? 'Gỡ ứng dụng hệ thống' : 'Gỡ ứng dụng cá nhân khỏi khách hàng'}
+                        title={app.type === 'SYSTEM' ? 'Gỡ ứng dụng hệ thống' : 'Gỡ ứng dụng cá nhân khỏi khách hàng'}
                         onClick={() => {
-                          const confirmMsg = oa.type === 'SYSTEM'
-                            ? `Bạn có chắc muốn gỡ ứng dụng hệ thống "${oa.oaName}" khỏi khách hàng này?`
-                            : `Bạn có chắc muốn gỡ ứng dụng cá nhân "${oa.oaName}" khỏi khách hàng này? Ứng dụng sẽ được trả về kho ứng dụng để có thể gán lại sau này.`;
+                          const name = app.appName;
+                          const confirmMsg = app.type === 'SYSTEM'
+                            ? `Bạn có chắc muốn gỡ ứng dụng hệ thống "${name}" khỏi khách hàng này?`
+                            : `Bạn có chắc muốn gỡ ứng dụng cá nhân "${name}" khỏi khách hàng này? Ứng dụng sẽ được trả về kho ứng dụng để có thể gán lại sau này.`;
                           if (window.confirm(confirmMsg)) {
-                            unassignAppMutation.mutate(oa.id);
+                            unassignAppMutation.mutate(app.id);
                           }
                         }}
                       >
@@ -436,7 +438,7 @@ export default function AdminCustomerDetail() {
                 </tr>
               ))}
 
-              {!customer.allOAs?.length && (
+              {!customer.allApps?.length && (
                 <tr>
                   <td colSpan={7} className="empty-state">
                     <div className="empty-state-title">Khách hàng chưa có ứng dụng liên kết nào</div>
@@ -530,10 +532,10 @@ export default function AdminCustomerDetail() {
                     : modalFilter === 'private'
                     ? availablePrivateApps
                     : [...availableSystemApps, ...availablePrivateApps]
-                  ).map(oa => ({
-                    value: oa.id,
-                    label: oa.oaName,
-                    sublabel: `${oa.isSystem ? 'Hệ thống' : 'Cá nhân'} \u2022 ${oa._count?.templates || 0} mẫu tin`,
+                  ).map(app => ({
+                    value: app.id,
+                    label: app.appName,
+                    sublabel: `${app.isSystem ? 'Hệ thống' : 'Cá nhân'} \u2022 ${app._count?.templates || 0} mẫu tin`,
                   }))}
                 />
 
@@ -743,8 +745,8 @@ export default function AdminCustomerDetail() {
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, color: '#64748b' }}>Tổng số OA đang dùng</span>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{customer.allOAs?.length || 0} OA</span>
+                  <span style={{ fontSize: 13, color: '#64748b' }}>Tổng số ứng dụng đang dùng</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>{customer.allApps?.length || 0} ứng dụng</span>
                 </div>
               </div>
             </div>

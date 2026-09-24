@@ -30,7 +30,7 @@ async function getCampaigns({ userId, status, page = 1, limit = 20 }) {
       where,
       include: {
         user: { select: { id: true, fullName: true, companyName: true } },
-        fptAppConfig: { select: { id: true, oaName: true } },
+        fptAppConfig: { select: { id: true, appName: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
@@ -50,7 +50,7 @@ async function getCampaignById(id) {
     where: { id },
     include: {
       user: { select: { id: true, fullName: true } },
-      fptAppConfig: { select: { id: true, oaName: true } },
+      fptAppConfig: { select: { id: true, appName: true } },
     },
   });
 

@@ -30,7 +30,7 @@ import {
 import TemplateDetailModal from '../../components/TemplateDetailModal';
 import CustomSelect from '../../components/CustomSelect';
 
-export default function AdminOADetail() {
+export default function AdminAppDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -38,17 +38,17 @@ export default function AdminOADetail() {
 
   // Modals & Selected Template
   const [showEditModal, setShowEditModal] = useState(false);
-  const [editForm, setEditForm] = useState({ oaName: '', fptAppId: '', fptSecretKey: '', status: 'ACTIVE' });
+  const [editForm, setEditForm] = useState({ appName: '', fptAppId: '', fptSecretKey: '', status: 'ACTIVE' });
   const [editErrorMsg, setEditErrorMsg] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState(null);
 
   const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
 
-  // Fetch OA Detail
-  const { data: oa, isLoading, refetch } = useQuery({
-    queryKey: ['admin-oa-detail', id],
-    queryFn: () => api.get(`/admin/oa-configs/${id}`).then(r => r.data.data),
+  // Fetch App Detail
+  const { data: app, isLoading, refetch } = useQuery({
+    queryKey: ['admin-app-detail', id],
+    queryFn: () => api.get(`/admin/app-configs/${id}`).then(r => r.data.data),
   });
 
   // Fetch ZNS Quota
@@ -59,8 +59,8 @@ export default function AdminOADetail() {
     error: quotaError,
     refetch: refetchQuota
   } = useQuery({
-    queryKey: ['admin-oa-quota', id],
-    queryFn: () => api.get(`/admin/oa-configs/${id}/quota`).then(r => r.data.data),
+    queryKey: ['admin-app-quota', id],
+    queryFn: () => api.get(`/admin/app-configs/${id}/quota`).then(r => r.data.data),
     enabled: !!id,
     retry: 1,
   });
@@ -72,12 +72,12 @@ export default function AdminOADetail() {
     enabled: showAssignModal,
   });
 
-  // Update OA Mutation
+  // Update App Mutation
   const updateMutation = useMutation({
-    mutationFn: (d) => api.put(`/admin/oa-configs/${id}`, d),
+    mutationFn: (d) => api.put(`/admin/app-configs/${id}`, d),
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-oa-detail', id]);
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-detail', id]);
+      queryClient.invalidateQueries(['admin-app-configs']);
       setShowEditModal(false);
       toast.success('Cập nhật thông tin ứng dụng thành công!');
     },
@@ -90,10 +90,9 @@ export default function AdminOADetail() {
 
   // Sync Mutation
   const syncMutation = useMutation({
-    mutationFn: () => api.post(`/admin/oa-configs/${id}/sync`),
+    mutationFn: () => api.post(`/admin/app-configs/${id}/sync`),
     onSuccess: (r) => {
-      queryClient.invalidateQueries(['admin-oa-detail', id]);
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-detail', id]);
       toast.success(`Đồng bộ thành công! Đã cập nhật ${r.data.data?.templatesCount || 0} mẫu tin.`);
     },
     onError: (err) => {
@@ -103,10 +102,9 @@ export default function AdminOADetail() {
 
   // Toggle status
   const toggleStatusMutation = useMutation({
-    mutationFn: (status) => api.patch(`/admin/oa-configs/${id}/status`, { status }),
+    mutationFn: (status) => api.patch(`/admin/app-configs/${id}/status`, { status }),
     onSuccess: (_, status) => {
-      queryClient.invalidateQueries(['admin-oa-detail', id]);
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-detail', id]);
       toast.success(status === 'ACTIVE' ? 'Đã kích hoạt ứng dụng' : 'Đã tạm dừng ứng dụng');
     },
     onError: (err) => {
@@ -114,13 +112,13 @@ export default function AdminOADetail() {
     },
   });
 
-  // Delete OA
+  // Delete App
   const deleteMutation = useMutation({
-    mutationFn: () => api.delete(`/admin/oa-configs/${id}`),
+    mutationFn: () => api.delete(`/admin/app-configs/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-configs']);
       toast.success('Đã xóa ứng dụng thành công');
-      navigate('/admin/oa-configs');
+      navigate('/admin/app-configs');
     },
     onError: (err) => {
       toast.error(err.response?.data?.message || 'Lỗi khi xóa ứng dụng');
@@ -129,10 +127,9 @@ export default function AdminOADetail() {
 
   // Assign customer mutation
   const assignMutation = useMutation({
-    mutationFn: (userId) => api.post(`/admin/customers/${userId}/assign-system-oa`, { oaConfigId: id }),
+    mutationFn: (userId) => api.post(`/admin/customers/${userId}/assign-app`, { appConfigId: id }),
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-oa-detail', id]);
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-detail', id]);
       setShowAssignModal(false);
       setSelectedCustomerId('');
       toast.success('Đã gán ứng dụng cho khách hàng thành công!');
@@ -144,10 +141,9 @@ export default function AdminOADetail() {
 
   // Unassign customer mutation
   const unassignMutation = useMutation({
-    mutationFn: (userId) => api.delete(`/admin/customers/${userId}/assign-system-oa/${id}`),
+    mutationFn: (userId) => api.delete(`/admin/customers/${userId}/unassign-app/${id}`),
     onSuccess: () => {
-      queryClient.invalidateQueries(['admin-oa-detail', id]);
-      queryClient.invalidateQueries(['admin-oa-system']);
+      queryClient.invalidateQueries(['admin-app-detail', id]);
       toast.success('Đã gỡ quyền sử dụng ứng dụng của khách hàng');
     },
     onError: (err) => {
@@ -157,10 +153,10 @@ export default function AdminOADetail() {
 
   const handleOpenEdit = () => {
     setEditForm({
-      oaName: oa?.oaName || '',
-      fptAppId: oa?.fptAppId || '',
+      appName: app?.appName || '',
+      fptAppId: app?.fptAppId || '',
       fptSecretKey: '',
-      status: oa?.status || 'ACTIVE',
+      status: app?.status || 'ACTIVE',
     });
     setEditErrorMsg('');
     setShowEditModal(true);
@@ -180,7 +176,9 @@ export default function AdminOADetail() {
     );
   }
 
-  if (!oa) {
+  const appDisplayName = app?.appName || 'Ứng dụng';
+
+  if (!app) {
     return (
       <div className="empty-state">
         <div className="empty-state-title">Không tìm thấy ứng dụng</div>
@@ -188,7 +186,7 @@ export default function AdminOADetail() {
         <button
           type="button"
           className="btn btn-primary"
-          onClick={() => navigate('/admin/oa-configs')}
+          onClick={() => navigate('/admin/app-configs')}
           style={{ marginTop: 12 }}
         >
           Quay lại danh sách ứng dụng
@@ -197,8 +195,7 @@ export default function AdminOADetail() {
     );
   }
 
-  // Filter customers that are not yet assigned to this OA
-  const assignedUserIds = new Set(oa.assignments?.map(a => a.userId) || []);
+  const assignedUserIds = new Set(app.assignments?.map(a => a.userId) || []);
   const availableCustomers = (customersData || []).filter(c => !assignedUserIds.has(c.id));
 
   return (
@@ -208,7 +205,7 @@ export default function AdminOADetail() {
         <button
           type="button"
           className="btn btn-secondary"
-          onClick={() => navigate('/admin/oa-configs')}
+          onClick={() => navigate('/admin/app-configs')}
           style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
         >
           <ArrowLeft size={16} /> Quay lại danh sách ứng dụng
@@ -238,10 +235,10 @@ export default function AdminOADetail() {
         >
           <div style={{ flex: 1, minWidth: 0 }}>
             <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: 0, marginBottom: 8, letterSpacing: '-0.02em' }}>
-              {oa.oaName}
+              {appDisplayName}
             </h1>
             <div className="header-info-strip">
-              {oa.isSystem ? (
+              {app.isSystem ? (
                 <span
                   style={{
                     display: 'inline-flex',
@@ -279,24 +276,24 @@ export default function AdminOADetail() {
                 </span>
               )}
               <div className="header-info-pill">
-                App ID: <span className="pill-value" style={{ fontFamily: 'monospace' }}>{oa.fptAppId || '—'}</span>
+                App ID: <span className="pill-value" style={{ fontFamily: 'monospace' }}>{app.fptAppId || '—'}</span>
               </div>
-              {oa.oaId && (
+              {app.oaId && (
                 <div className="header-info-pill">
                   <IdentificationBadge size={13} weight="bold" />
-                  Mã OA: <span className="pill-value" style={{ fontFamily: 'monospace' }}>{oa.oaId}</span>
+                  Mã OA: <span className="pill-value" style={{ fontFamily: 'monospace' }}>{app.oaId}</span>
                 </div>
               )}
               <div className="header-info-pill">
                 <CalendarBlank size={12} weight="bold" />
-                {new Date(oa.createdAt).toLocaleDateString('vi-VN')}
+                {new Date(app.createdAt).toLocaleDateString('vi-VN')}
               </div>
             </div>
           </div>
 
           {/* Header Actions & Status */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-            {oa.status === 'ACTIVE' ? (
+            {app.status === 'ACTIVE' ? (
               <span className="badge-active-pill">Đang hoạt động</span>
             ) : (
               <span className="badge-inactive-pill">Tạm dừng</span>
@@ -316,7 +313,7 @@ export default function AdminOADetail() {
               type="button"
               className="btn btn-danger btn-sm"
               onClick={() => {
-                if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${oa.oaName}"? Hành động này không thể hoàn tác!`)) {
+                if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${appDisplayName}"? Hành động này không thể hoàn tác!`)) {
                   deleteMutation.mutate();
                 }
               }}
@@ -330,7 +327,7 @@ export default function AdminOADetail() {
           </div>
         </div>
 
-        {/* Thanh Hạn Mức Tinh Gọn (Compact Quota Strip) - Chỉ 1 dòng thanh lịch */}
+        {/* Thanh Hạn Mức Tinh Gọn (Compact Quota Strip) */}
         <div
           style={{
             marginTop: 14,
@@ -385,7 +382,6 @@ export default function AdminOADetail() {
                     / {quota.dailyQuota?.toLocaleString('vi-VN') || 0} tin
                   </span>
                 </span>
-                {/* Mini Progress Bar */}
                 <div style={{ width: 64, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginLeft: 4 }}>
                   <div
                     style={{
@@ -401,7 +397,6 @@ export default function AdminOADetail() {
                 </span>
               </div>
 
-              {/* Hạn mức tin hậu mãi */}
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#334155' }}>
                 <span style={{ color: '#cbd5e1' }}>•</span>
                 <span style={{ color: '#64748b' }}>Hậu mãi (Promotion):</span>
@@ -418,7 +413,6 @@ export default function AdminOADetail() {
             </div>
           )}
 
-          {/* Nút Làm mới bên phải */}
           <button
             type="button"
             className="btn btn-sm btn-secondary"
@@ -441,7 +435,7 @@ export default function AdminOADetail() {
         </div>
       </div>
 
-      {/* Section 1: Danh sách khách hàng đang sử dụng OA */}
+      {/* Section 1: Danh sách khách hàng đang sử dụng App */}
       <div className="card" style={{ marginBottom: 'var(--spacing-xl)' }}>
         <div
           className="card-header"
@@ -479,7 +473,7 @@ export default function AdminOADetail() {
               </tr>
             </thead>
             <tbody>
-              {oa.assignments?.map((a, idx) => (
+              {app.assignments?.map((a, idx) => (
                 <tr key={a.id || a.userId}>
                   <td className="table-col-index">{idx + 1}</td>
                   <td>
@@ -520,7 +514,7 @@ export default function AdminOADetail() {
                 </tr>
               ))}
 
-              {!oa.assignments?.length && (
+              {!app.assignments?.length && (
                 <tr>
                   <td colSpan={6} className="empty-state" style={{ padding: '30px 20px', textAlign: 'center' }}>
                     <div className="empty-state-title" style={{ fontSize: 14 }}>
@@ -549,18 +543,23 @@ export default function AdminOADetail() {
             borderBottom: '1px solid #e2e8f0',
           }}
         >
-          <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-            Mẫu tin ZNS đã duyệt
-          </h2>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
+              Mẫu tin nhắn ZNS đã duyệt ({app.templates?.length || 0})
+            </h2>
+            <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>
+              Danh sách mẫu tin được đồng bộ trực tiếp từ cổng FPT Telecom
+            </p>
+          </div>
           <button
             type="button"
             className="btn btn-sm btn-secondary"
             onClick={() => syncMutation.mutate()}
             disabled={syncMutation.isPending}
-            style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontWeight: 500 }}
+            style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
           >
             <ArrowsClockwise size={14} className={syncMutation.isPending ? 'spin' : ''} />
-            Đồng bộ lại
+            {syncMutation.isPending ? 'Đang đồng bộ...' : 'Đồng bộ từ FPT'}
           </button>
         </div>
 
@@ -569,75 +568,70 @@ export default function AdminOADetail() {
             <thead>
               <tr>
                 <th style={{ width: 44, textAlign: 'center' }}>#</th>
-                <th style={{ width: '15%', textAlign: 'left' }}>Mã Template ID</th>
-                <th style={{ width: '23%', textAlign: 'left' }}>Tên mẫu tin</th>
-                <th style={{ width: '15%', textAlign: 'center' }}>Phân loại</th>
-                <th style={{ width: '23%', textAlign: 'left' }}>Tham số truyền vào</th>
-                <th style={{ width: '12%', textAlign: 'center' }}>Trạng thái</th>
-                <th style={{ width: '12%', textAlign: 'right' }}>Thao tác</th>
+                <th style={{ width: '12%', textAlign: 'center' }}>ID Mẫu</th>
+                <th style={{ width: '38%', textAlign: 'left' }}>Tên mẫu tin nhắn</th>
+                <th style={{ width: '18%', textAlign: 'center' }}>Phân loại</th>
+                <th style={{ width: '18%', textAlign: 'center' }}>Trạng thái</th>
+                <th style={{ width: '10%', textAlign: 'center' }}>Thao tác</th>
               </tr>
             </thead>
             <tbody>
-              {oa.templates?.map((t, idx) => (
+              {app.templates?.map((tpl, idx) => (
                 <tr
-                  key={t.id}
+                  key={tpl.id}
                   className="clickable-row"
-                  onClick={() => setSelectedTemplate(t)}
+                  onClick={() => setSelectedTemplate(tpl)}
+                  style={{ cursor: 'pointer' }}
                 >
                   <td className="table-col-index">{idx + 1}</td>
-                  <td style={{ fontFamily: 'monospace', fontWeight: 600, color: '#2563eb' }}>
-                    {t.templateId}
-                  </td>
-                  <td className="table-cell-bold">{t.templateName}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <span className="badge badge-neutral">{t.templateTag || 'Mặc định'}</span>
+                  <td style={{ textAlign: 'center', fontFamily: 'monospace', fontWeight: 600, color: '#2563eb' }}>
+                    {tpl.templateId}
                   </td>
                   <td>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                      {t.listParams?.map((p) => (
-                        <span
-                          key={p.name}
-                          className="badge badge-primary"
-                          style={{ fontSize: 11, fontWeight: 500 }}
-                        >
-                          {p.name}{p.require ? ' *' : ''}
-                        </span>
-                      ))}
-                      {!t.listParams?.length && (
-                        <span style={{ fontSize: 'var(--font-size-xs)', color: 'var(--text-muted)' }}>
-                          Không có tham số động
-                        </span>
-                      )}
-                    </div>
+                    <span
+                      className="table-cell-link"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedTemplate(tpl);
+                      }}
+                      style={{ fontWeight: 500 }}
+                    >
+                      {tpl.templateName}
+                    </span>
                   </td>
                   <td style={{ textAlign: 'center' }}>
-                    <span className="badge-active-pill">Đang hoạt động</span>
+                    <span className="badge badge-neutral">
+                      {tpl.templateTag || 'Chăm sóc KH'}
+                    </span>
                   </td>
-                  <td style={{ textAlign: 'right' }}>
+                  <td style={{ textAlign: 'center' }}>
+                    {tpl.status === 'ENABLE' ? (
+                      <span className="badge-active-pill">Đang hoạt động</span>
+                    ) : (
+                      <span className="badge-inactive-pill">Đã khóa</span>
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'center' }} onClick={(e) => e.stopPropagation()}>
                     <button
                       type="button"
                       className="btn btn-sm btn-secondary"
-                      style={{ fontSize: 12, padding: '4px 10px', display: 'inline-flex', alignItems: 'center', gap: 4 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setSelectedTemplate(t);
-                      }}
+                      onClick={() => setSelectedTemplate(tpl)}
+                      style={{ padding: '3px 8px', fontSize: 11.5 }}
                     >
-                      Chi tiết
-                      <CaretRight size={13} weight="bold" />
+                      Xem mẫu
                     </button>
                   </td>
                 </tr>
               ))}
 
-              {!oa.templates?.length && (
+              {!app.templates?.length && (
                 <tr>
-                  <td colSpan={7} className="empty-state" style={{ padding: '30px 20px', textAlign: 'center' }}>
+                  <td colSpan={6} className="empty-state" style={{ padding: '30px 20px', textAlign: 'center' }}>
                     <div className="empty-state-title" style={{ fontSize: 14 }}>
-                      Chưa có mẫu tin nào
+                      Chưa có mẫu tin nhắn nào
                     </div>
                     <p style={{ color: '#64748b', fontSize: 12.5, marginTop: 4 }}>
-                      Bấm nút "Đồng bộ mẫu tin" để kéo danh sách mẫu đã duyệt từ hệ thống FPT Telecom về.
+                      Bấm nút "Đồng bộ từ FPT" ở góc phải để tải danh sách mẫu tin mới nhất từ hệ thống FPT Telecom.
                     </p>
                   </td>
                 </tr>
@@ -647,15 +641,22 @@ export default function AdminOADetail() {
         </div>
       </div>
 
-      {/* Modal 1: Sửa thông tin ứng dụng */}
+      {/* Template Detail Modal */}
+      {selectedTemplate && (
+        <TemplateDetailModal
+          template={selectedTemplate}
+          appId={id}
+          isAdmin={true}
+          onClose={() => setSelectedTemplate(null)}
+        />
+      )}
+
+      {/* Modal 1: Sửa thông tin App */}
       {showEditModal && (
         <div className="modal-overlay" onClick={() => setShowEditModal(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 520 }}>
+          <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 500 }}>
             <div className="modal-header">
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <PencilSimple size={20} color="#2563eb" weight="bold" />
-                <h3 className="modal-title">Sửa thông tin ứng dụng</h3>
-              </div>
+              <h3 className="modal-title">Sửa thông tin ứng dụng</h3>
               <button
                 type="button"
                 className="modal-close"
@@ -687,8 +688,8 @@ export default function AdminOADetail() {
                   <label className="form-label" style={{ fontWeight: 500 }}>Tên ứng dụng *</label>
                   <input
                     className="form-input"
-                    value={editForm.oaName}
-                    onChange={e => setEditForm({ ...editForm, oaName: e.target.value })}
+                    value={editForm.appName}
+                    onChange={e => setEditForm({ ...editForm, appName: e.target.value })}
                     required
                   />
                 </div>
@@ -773,7 +774,7 @@ export default function AdminOADetail() {
 
             <div className="modal-body">
               <p style={{ fontSize: 13, color: '#64748b', marginBottom: 14 }}>
-                Chọn tài khoản doanh nghiệp được quyền sử dụng ứng dụng <strong>{oa.oaName}</strong> để gửi tin ZNS:
+                Chọn tài khoản doanh nghiệp được quyền sử dụng ứng dụng <strong>{appDisplayName}</strong> để gửi tin ZNS:
               </p>
 
               <div className="form-group">
@@ -803,7 +804,7 @@ export default function AdminOADetail() {
                 className="btn btn-secondary"
                 onClick={() => setShowAssignModal(false)}
               >
-                Hủy
+                Đóng
               </button>
               <button
                 type="button"
@@ -811,22 +812,11 @@ export default function AdminOADetail() {
                 disabled={!selectedCustomerId || assignMutation.isPending}
                 onClick={() => assignMutation.mutate(selectedCustomerId)}
               >
-                {assignMutation.isPending ? 'Đang gán...' : 'Xác nhận gán'}
+                {assignMutation.isPending ? 'Đang gán...' : 'Gán quyền'}
               </button>
             </div>
           </div>
         </div>
-      )}
-
-      {/* Template Detail Modal */}
-      {selectedTemplate && (
-        <TemplateDetailModal
-          isOpen={!!selectedTemplate}
-          onClose={() => setSelectedTemplate(null)}
-          templateId={selectedTemplate.templateId}
-          oaId={oa.id}
-          isAdmin={true}
-        />
       )}
     </div>
   );

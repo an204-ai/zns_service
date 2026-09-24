@@ -193,7 +193,7 @@ async function getMessages({ userId, status, phone, templateId, fptAppConfigId, 
       where,
       include: {
         user: { select: { id: true, fullName: true, companyName: true } },
-        fptAppConfig: { select: { id: true, oaName: true } },
+        fptAppConfig: { select: { id: true, appName: true } },
       },
       orderBy: { createdAt: 'desc' },
       skip: (page - 1) * limit,
@@ -213,7 +213,7 @@ async function getMessageById(id) {
     where: { id },
     include: {
       user: { select: { id: true, fullName: true, companyName: true, email: true } },
-      fptAppConfig: { select: { id: true, oaName: true, oaId: true } },
+      fptAppConfig: { select: { id: true, appName: true, oaId: true } },
       campaign: { select: { id: true, name: true } },
     },
   });
