@@ -193,7 +193,7 @@ export default function AdminCustomerDetail() {
       <div
         className="card"
         style={{
-          padding: '16px 20px',
+          padding: '10px 14px',
           marginBottom: 'var(--spacing-lg)',
           background: '#ffffff',
           borderRadius: 8,
@@ -201,15 +201,12 @@ export default function AdminCustomerDetail() {
           boxShadow: 'none',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>{customer.fullName}</h1>
-              {customer.status === 'ACTIVE' ? (
-                <span className="badge-active-pill">Đang hoạt động</span>
-              ) : (
-                <span className="badge-inactive-pill">Đã khóa</span>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+              <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: 0, letterSpacing: '-0.02em' }}>
+                {customer.fullName}
+              </h1>
               <button
                 type="button"
                 onClick={() => setShowInfoModal(true)}
@@ -232,32 +229,33 @@ export default function AdminCustomerDetail() {
                 <Info size={14} weight="bold" />
               </button>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                <EnvelopeSimple size={13} color="#64748b" weight="bold" />
+            <div className="header-info-strip">
+              <div className="header-info-pill">
+                <EnvelopeSimple size={12} weight="bold" />
                 {customer.email}
               </div>
-              {customer.phone && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                  <Phone size={13} color="#64748b" weight="bold" />
+              {customer.phone ? (
+                <div className="header-info-pill">
+                  <Phone size={12} weight="bold" />
                   {customer.phone}
                 </div>
-              )}
-              {customer.companyName && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                  <Buildings size={13} color="#64748b" weight="bold" />
+              ) : customer.companyName ? (
+                <div className="header-info-pill">
+                  <Buildings size={12} weight="bold" />
                   {customer.companyName}
                 </div>
-              )}
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                <CalendarBlank size={13} color="#64748b" weight="bold" />
-                {new Date(customer.createdAt).toLocaleDateString('vi-VN')}
-              </div>
+              ) : null}
             </div>
           </div>
 
-          {/* Action buttons on the right side */}
-          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+          {/* Action buttons and Status on the right side */}
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', flexShrink: 0 }}>
+            {customer.status === 'ACTIVE' ? (
+              <span className="badge-active-pill">Đang hoạt động</span>
+            ) : (
+              <span className="badge-inactive-pill">Đã khóa</span>
+            )}
+
             <button
               type="button"
               className="btn btn-sm btn-secondary"

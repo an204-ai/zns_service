@@ -13,7 +13,9 @@ import {
   MagnifyingGlass,
   Gauge,
   ArrowsClockwise,
-  WarningCircle
+  WarningCircle,
+  Buildings,
+  User
 } from '@phosphor-icons/react';
 import Pagination from '../../components/Pagination';
 import TemplateDetailModal from '../../components/TemplateDetailModal';
@@ -79,7 +81,7 @@ export default function CustomerOAInfo() {
 
     return (
       <div style={{ maxWidth: '100%', overflow: 'hidden' }}>
-        {/* Navigation & Header */}
+        {/* Navigation */}
         <div style={{ marginBottom: 'var(--spacing-md)' }}>
           <button
             type="button"
@@ -88,9 +90,8 @@ export default function CustomerOAInfo() {
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
-              marginBottom: 12,
               fontWeight: 500,
-              fontSize: 13,
+              fontSize: 12.5,
             }}
             onClick={() => {
               setSelectedOaId(null);
@@ -100,50 +101,97 @@ export default function CustomerOAInfo() {
             <ArrowLeft size={15} weight="bold" />
             Quay lại danh sách ứng dụng
           </button>
+        </div>
 
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: 12,
-            }}
-          >
+        {/* Header Card */}
+        <div
+          className="card"
+          style={{
+            padding: '10px 14px',
+            marginBottom: 'var(--spacing-md)',
+            background: '#ffffff',
+            borderRadius: 8,
+            border: '1px solid #e2e8f0',
+            boxShadow: 'none',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 8 }}>
+            <h1 style={{ margin: 0, fontSize: 24, fontWeight: 700, color: '#0f172a', letterSpacing: '-0.02em' }}>
+              {selectedOa.oaName}
+            </h1>
+
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 10 }}>
-                <h1 className="page-header-title" style={{ margin: 0, fontSize: 20 }}>
-                  {selectedOa.oaName}
-                </h1>
-                {selectedOa.isSystem ? (
-                  <span className="badge badge-primary">Hệ thống</span>
-                ) : (
-                  <span className="badge badge-success">Cá nhân</span>
-                )}
+              {selectedOa.status === 'ACTIVE' ? (
                 <span className="badge-active-pill">Đang hoạt động</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                  Mã OA: <strong style={{ color: '#0f172a' }}>{selectedOa.oaId || 'Chưa cập nhật'}</strong>
-                </div>
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                  <span style={{ color: '#0284c7', fontWeight: 600 }}>{selectedOa.templates?.length || 0}</span> mẫu tin ZNS
-                </div>
-                {oaQuota?.dailyQuota ? (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f0fdf4', padding: '3px 10px', borderRadius: 20, border: '1px solid #bbf7d0' }}>
-                    <Gauge size={13} color="#059669" weight="bold" />
-                    <strong style={{ color: '#059669' }}>
-                      {oaQuota.remainingQuota?.toLocaleString('vi-VN')} / {oaQuota.dailyQuota?.toLocaleString('vi-VN')}
-                    </strong> tin hôm nay
-                  </div>
-                ) : isQuotaError ? (
-                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, color: '#dc2626', background: '#fef2f2', padding: '3px 10px', borderRadius: 20, border: '1px solid #fecaca' }}>
-                    <WarningCircle size={13} weight="bold" />
-                    Không thể lấy hạn mức
-                  </div>
-                ) : null}
-              </div>
+              ) : (
+                <span className="badge-inactive-pill">Tạm dừng</span>
+              )}
             </div>
+          </div>
+
+          <div className="header-info-strip">
+            {selectedOa.isSystem ? (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  padding: '2.5px 8px',
+                  borderRadius: 12,
+                  background: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe',
+                }}
+              >
+                <Buildings size={13} weight="bold" />
+                Ứng dụng hệ thống
+              </span>
+            ) : (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 4,
+                  fontSize: 11.5,
+                  fontWeight: 500,
+                  padding: '2.5px 8px',
+                  borderRadius: 12,
+                  background: '#f5f3ff',
+                  color: '#6d28d9',
+                  border: '1px solid #ddd6fe',
+                }}
+              >
+                <User size={13} weight="bold" />
+                Ứng dụng cá nhân
+              </span>
+            )}
+            <div className="header-info-pill">
+              Mã OA: <strong style={{ color: '#0f172a' }}>{selectedOa.oaId || 'Chưa cập nhật'}</strong>
+            </div>
+            <div className="header-info-pill">
+              <span style={{ color: '#0284c7', fontWeight: 600 }}>{selectedOa.templates?.length || 0}</span> mẫu tin ZNS
+            </div>
+            {oaQuota?.dailyQuota ? (
+              <div
+                className="header-info-pill"
+                style={{ background: '#dcfce7', borderColor: '#86efac', color: '#166534' }}
+              >
+                <Gauge size={13} color="#15803d" weight="bold" />
+                <strong style={{ color: '#15803d' }}>
+                  {oaQuota.remainingQuota?.toLocaleString('vi-VN')} / {oaQuota.dailyQuota?.toLocaleString('vi-VN')}
+                </strong> tin hôm nay
+              </div>
+            ) : isQuotaError ? (
+              <div
+                className="header-info-pill"
+                style={{ background: '#fee2e2', borderColor: '#fca5a5', color: '#991b1b' }}
+              >
+                <WarningCircle size={13} weight="bold" />
+                Không thể lấy hạn mức
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -565,8 +613,12 @@ export default function CustomerOAInfo() {
                         </td>
 
                         {/* Cột 3: Trạng thái */}
-                        <td>
-                          <span className="badge-active-pill">Đang hoạt động</span>
+                        <td style={{ textAlign: 'center' }}>
+                          {oa.status === 'ACTIVE' ? (
+                            <span className="badge-active-pill">Đang hoạt động</span>
+                          ) : (
+                            <span className="badge-inactive-pill">Tạm dừng</span>
+                          )}
                         </td>
 
                         {/* Cột 4: Loại ứng dụng */}

@@ -219,7 +219,7 @@ export default function AdminOADetail() {
       <div
         className="card"
         style={{
-          padding: '16px 20px',
+          padding: '10px 14px',
           marginBottom: 'var(--spacing-lg)',
           background: '#ffffff',
           borderRadius: 8,
@@ -231,21 +231,16 @@ export default function AdminOADetail() {
           style={{
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center',
+            alignItems: 'flex-start',
             flexWrap: 'wrap',
-            gap: 12,
+            gap: 8,
           }}
         >
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <h1 style={{ fontSize: 18, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                {oa.oaName}
-              </h1>
-              {oa.status === 'ACTIVE' ? (
-                <span className="badge-active-pill">Đang hoạt động</span>
-              ) : (
-                <span className="badge-inactive-pill">Tạm dừng</span>
-              )}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <h1 style={{ fontSize: 24, fontWeight: 700, color: '#0f172a', margin: 0, marginBottom: 8, letterSpacing: '-0.02em' }}>
+              {oa.oaName}
+            </h1>
+            <div className="header-info-strip">
               {oa.isSystem ? (
                 <span
                   style={{
@@ -254,8 +249,8 @@ export default function AdminOADetail() {
                     gap: 4,
                     fontSize: 11.5,
                     fontWeight: 500,
-                    padding: '2px 8px',
-                    borderRadius: 4,
+                    padding: '2.5px 8px',
+                    borderRadius: 12,
                     background: '#eff6ff',
                     color: '#1d4ed8',
                     border: '1px solid #bfdbfe',
@@ -272,8 +267,8 @@ export default function AdminOADetail() {
                     gap: 4,
                     fontSize: 11.5,
                     fontWeight: 500,
-                    padding: '2px 8px',
-                    borderRadius: 4,
+                    padding: '2.5px 8px',
+                    borderRadius: 12,
                     background: '#f5f3ff',
                     color: '#6d28d9',
                     border: '1px solid #ddd6fe',
@@ -283,49 +278,53 @@ export default function AdminOADetail() {
                   Ứng dụng cá nhân
                 </span>
               )}
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                App ID: <span style={{ color: '#0f172a', fontFamily: 'monospace', fontWeight: 500 }}>{oa.fptAppId || '—'}</span>
+              <div className="header-info-pill">
+                App ID: <span className="pill-value" style={{ fontFamily: 'monospace' }}>{oa.fptAppId || '—'}</span>
               </div>
               {oa.oaId && (
-                <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                  <IdentificationBadge size={13} color="#64748b" weight="bold" />
-                  Mã OA: <span style={{ color: '#0f172a', fontFamily: 'monospace' }}>{oa.oaId}</span>
+                <div className="header-info-pill">
+                  <IdentificationBadge size={13} weight="bold" />
+                  Mã OA: <span className="pill-value" style={{ fontFamily: 'monospace' }}>{oa.oaId}</span>
                 </div>
               )}
-              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12.5, color: '#475569', background: '#f8fafc', padding: '3px 10px', borderRadius: 20, border: '1px solid #f1f5f9' }}>
-                <CalendarBlank size={13} color="#64748b" weight="bold" />
+              <div className="header-info-pill">
+                <CalendarBlank size={12} weight="bold" />
                 {new Date(oa.createdAt).toLocaleDateString('vi-VN')}
               </div>
             </div>
           </div>
 
-          {/* Header Actions */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          {/* Header Actions & Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            {oa.status === 'ACTIVE' ? (
+              <span className="badge-active-pill">Đang hoạt động</span>
+            ) : (
+              <span className="badge-inactive-pill">Tạm dừng</span>
+            )}
+
             <button
               type="button"
-              className="btn btn-secondary"
+              className="btn btn-secondary btn-sm"
               onClick={handleOpenEdit}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, height: 32, padding: '0 10px' }}
             >
-              <PencilSimple size={15} />
+              <PencilSimple size={13} />
               <span>Sửa thông tin</span>
             </button>
 
             <button
               type="button"
-              className="btn btn-danger"
+              className="btn btn-danger btn-sm"
               onClick={() => {
                 if (window.confirm(`Bạn có chắc chắn muốn xóa ứng dụng "${oa.oaName}"? Hành động này không thể hoàn tác!`)) {
                   deleteMutation.mutate();
                 }
               }}
               disabled={deleteMutation.isPending}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 13, padding: '6px 14px' }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 12, height: 32, padding: '0 10px' }}
               title="Xóa ứng dụng"
             >
-              <Trash size={15} />
+              <Trash size={13} />
               <span>Xóa ứng dụng</span>
             </button>
           </div>
