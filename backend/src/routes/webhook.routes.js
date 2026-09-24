@@ -46,13 +46,20 @@ router.post('/fpt-dlr', async (req, res) => {
 
     // Tự động forward Webhook DLR sang máy chủ khách hàng
     let targetDlrUrl = updated?.callbackUrl;
-    if (!targetDlrUrl && updated?.userId && updated?.fptAppConfigId) {
+    let targetSecret = updated?.callbackSecret;
+
+    if (updated?.userId && updated?.fptAppConfigId) {
       const { prisma } = require('../config/database');
       const keyRec = await prisma.apiKey.findFirst({
         where: { userId: updated.userId, appConfigId: updated.fptAppConfigId },
-        select: { webhookDlrUrl: true, webhookUrl: true },
+        select: { webhookDlrUrl: true, webhookUrl: true, webhookSecret: true },
       });
-      targetDlrUrl = keyRec?.webhookDlrUrl || keyRec?.webhookUrl;
+      if (!targetDlrUrl) {
+        targetDlrUrl = keyRec?.webhookDlrUrl || keyRec?.webhookUrl;
+      }
+      if (!targetSecret) {
+        targetSecret = keyRec?.webhookSecret;
+      }
     }
 
     if (targetDlrUrl) {
@@ -63,6 +70,7 @@ router.post('/fpt-dlr', async (req, res) => {
           QUEUES.ZNS_CALLBACK,
           Buffer.from(JSON.stringify({
             callbackUrl: targetDlrUrl,
+            secret: targetSecret || null,
             data: {
               event: 'zns.dlr_status',
               tracking_id: updated.id,
@@ -142,40 +150,8 @@ router.post('/fpt-rating', async (req, res) => {
       });
     }
 
-    // 3. Tự động forward Webhook sang máy chủ của khách hàng nếu khách đã cấu hình Webhook Đánh giá
-    let targetWebhookUrl = null;
-    if (message.userId && message.fptAppConfigId) {
-      const keyRec = await prisma.apiKey.findFirst({
-        where: { userId: message.userId, appConfigId: message.fptAppConfigId },
-        select: { webhookRatingUrl: true, webhookUrl: true },
-      });
-      targetWebhookUrl = keyRec?.webhookRatingUrl || keyRec?.webhookUrl;
-    }
-
-    if (targetWebhookUrl) {
-      const { getChannel, QUEUES } = require('../config/rabbitmq');
-      const channel = getChannel();
-      if (channel) {
-        channel.sendToQueue(
-          QUEUES.ZNS_CALLBACK,
-          Buffer.from(JSON.stringify({
-            callbackUrl: targetWebhookUrl,
-            data: {
-              event: 'zns.customer_rating',
-              tracking_id: message.id,
-              ref_id: message.refId,
-              phone: phone || message.phone,
-              rate: updated.rating,
-              feedbacks: updated.ratingFeedbacks,
-              note: updated.ratingNote,
-              rated_at: updated.ratedAt,
-            },
-          })),
-          { persistent: true }
-        );
-      }
-    }
-
+    // Tạm thời chưa forward Webhook đánh giá cho khách (chờ liên hệ FPT bổ sung sau)
+    // Dữ liệu đánh giá vẫn được lưu đầy đủ vào CSDL và phát WebSocket cho người dùng nội bộ
     res.json({ success: true, message: 'Rating saved successfully' });
   } catch (error) {
     console.error('Webhook Rating error:', error.message);

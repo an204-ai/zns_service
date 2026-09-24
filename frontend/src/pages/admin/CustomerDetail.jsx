@@ -24,7 +24,9 @@ import {
   Info,
   WebhooksLogo,
   PencilSimple,
-  FloppyDisk
+  FloppyDisk,
+  Eye,
+  EyeSlash,
 } from '@phosphor-icons/react';
 import CustomSelect from '../../components/CustomSelect';
 
@@ -49,7 +51,8 @@ export default function AdminCustomerDetail() {
   // Webhook edit state
   const [editingWebhookApp, setEditingWebhookApp] = useState(null);
   const [webhookDlrInput, setWebhookDlrInput] = useState('');
-  const [webhookRatingInput, setWebhookRatingInput] = useState('');
+  const [webhookSecretInput, setWebhookSecretInput] = useState('');
+  const [showSecretInputVisible, setShowSecretInputVisible] = useState(false);
 
   // Fetch Customer Details
   const { data: customer, isLoading, refetch } = useQuery({
@@ -147,15 +150,15 @@ export default function AdminCustomerDetail() {
 
   // Update Webhook URL mutation
   const updateWebhookMutation = useMutation({
-    mutationFn: ({ keyId, webhookDlrUrl, webhookRatingUrl }) =>
-      api.put(`/admin/customers/${id}/api-keys/${keyId}/webhook`, { webhookDlrUrl, webhookRatingUrl }),
+    mutationFn: ({ keyId, webhookDlrUrl, webhookSecret }) =>
+      api.put(`/admin/customers/${id}/api-keys/${keyId}/webhook`, { webhookDlrUrl, webhookSecret }),
     onSuccess: () => {
       refetch();
-      toast.success('Cập nhật Webhook URL cho khách hàng thành công');
+      toast.success('Cập nhật cấu hình Webhook DLR thành công');
       setEditingWebhookApp(null);
     },
     onError: (err) => {
-      toast.error(err.response?.data?.message || 'Lỗi cập nhật Webhook URL');
+      toast.error(err.response?.data?.message || 'Lỗi cập nhật cấu hình Webhook');
     },
   });
 
@@ -416,7 +419,7 @@ export default function AdminCustomerDetail() {
                         </div>
 
                         {/* Webhook URLs Row */}
-                        {(app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || app.apiKey.webhookRatingUrl) ? (
+                        {(app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || app.apiKey.webhookSecret) ? (
                           <div
                             style={{
                               display: 'flex',
@@ -439,11 +442,9 @@ export default function AdminCustomerDetail() {
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
                                 }}
-                                title={`DLR: ${app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || 'Chưa có'}\nRating: ${app.apiKey.webhookRatingUrl || 'Chưa có'}`}
+                                title={`Webhook DLR: ${app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || 'Chưa có'}\nBearer Token: ${app.apiKey.webhookSecret ? 'Đã cài đặt' : 'Không có'}`}
                               >
-                                {app.apiKey.webhookDlrUrl && app.apiKey.webhookRatingUrl
-                                  ? '2 Webhooks (DLR & Đánh giá)'
-                                  : (app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || app.apiKey.webhookRatingUrl)}
+                                {app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || 'Mã Bearer Token'}
                               </span>
                             </div>
                             <button
@@ -453,10 +454,11 @@ export default function AdminCustomerDetail() {
                                   keyId: app.apiKey.id,
                                   appName: app.appName,
                                   webhookDlrUrl: app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || '',
-                                  webhookRatingUrl: app.apiKey.webhookRatingUrl || '',
+                                  webhookSecret: app.apiKey.webhookSecret || '',
                                 });
                                 setWebhookDlrInput(app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || '');
-                                setWebhookRatingInput(app.apiKey.webhookRatingUrl || '');
+                                setWebhookSecretInput(app.apiKey.webhookSecret || '');
+                                setShowSecretInputVisible(false);
                               }}
                               style={{
                                 border: 'none',
@@ -484,10 +486,11 @@ export default function AdminCustomerDetail() {
                                 keyId: app.apiKey.id,
                                 appName: app.appName,
                                 webhookDlrUrl: '',
-                                webhookRatingUrl: '',
+                                webhookSecret: '',
                               });
                               setWebhookDlrInput('');
-                              setWebhookRatingInput('');
+                              setWebhookSecretInput('');
+                              setShowSecretInputVisible(false);
                             }}
                             style={{
                               border: '1px dashed #cbd5e1',
@@ -505,14 +508,14 @@ export default function AdminCustomerDetail() {
                               transition: 'all 0.15s ease',
                             }}
                             onMouseEnter={(e) => {
-                              e.currentTarget.style.borderColor = '#2563eb';
-                              e.currentTarget.style.color = '#2563eb';
+                              e.currentTarget.style.borderColor = '#16a34a';
+                              e.currentTarget.style.color = '#16a34a';
                             }}
                             onMouseLeave={(e) => {
                               e.currentTarget.style.borderColor = '#cbd5e1';
                               e.currentTarget.style.color = '#64748b';
                             }}
-                            title="Thêm Webhook URL nhận callback"
+                            title="Thêm Webhook URL nhận trạng thái tin nhắn"
                           >
                             <WebhooksLogo size={12} />
                             + Cài đặt Webhook
@@ -917,7 +920,7 @@ export default function AdminCustomerDetail() {
                 </div>
                 <div>
                   <h3 className="modal-title" style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0 }}>
-                    Cấu hình Webhook URL
+                    Cấu hình Webhook DLR
                   </h3>
                 </div>
               </div>
@@ -930,19 +933,15 @@ export default function AdminCustomerDetail() {
               onSubmit={(e) => {
                 e.preventDefault();
                 const dlrTrimmed = webhookDlrInput.trim();
-                const ratingTrimmed = webhookRatingInput.trim();
+                const secretTrimmed = webhookSecretInput.trim();
                 if (dlrTrimmed && !/^https?:\/\/.+/i.test(dlrTrimmed)) {
                   toast.error('Webhook URL trạng thái gửi tin (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
-                  return;
-                }
-                if (ratingTrimmed && !/^https?:\/\/.+/i.test(ratingTrimmed)) {
-                  toast.error('Webhook URL nhận đánh giá không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
                   return;
                 }
                 updateWebhookMutation.mutate({
                   keyId: editingWebhookApp.keyId,
                   webhookDlrUrl: dlrTrimmed || null,
-                  webhookRatingUrl: ratingTrimmed || null,
+                  webhookSecret: secretTrimmed || null,
                 });
               }}
             >
@@ -998,39 +997,72 @@ export default function AdminCustomerDetail() {
                       boxSizing: 'border-box',
                     }}
                   />
+                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4 }}>
+                    Đường dẫn máy chủ của khách nhận callback trạng thái gửi tin từ hệ thống khi FPT phản hồi.
+                  </div>
                 </div>
 
+                {/* Mã Bearer Token Header */}
                 <div>
-                  <label
-                    style={{
-                      display: 'block',
-                      fontWeight: 600,
-                      fontSize: 12.5,
-                      color: '#0f172a',
-                      marginBottom: 6,
-                    }}
-                  >
-                    Webhook URL nhận đánh giá của khách hàng
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://crm.yourdomain.com/webhook/zns-rating"
-                    value={webhookRatingInput}
-                    onChange={(e) => setWebhookRatingInput(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: 38,
-                      padding: '0 12px',
-                      fontSize: 12.5,
-                      fontFamily: 'monospace',
-                      borderRadius: 6,
-                      border: '1px solid #cbd5e1',
-                      background: '#ffffff',
-                      color: '#0f172a',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontWeight: 600,
+                        fontSize: 12.5,
+                        color: '#0f172a',
+                        margin: 0,
+                      }}
+                    >
+                      Mã xác thực Bearer Token (Header Authorization)
+                    </label>
+                    <span style={{ fontSize: 11.5, color: '#64748b' }}>Tùy chọn</span>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showSecretInputVisible ? 'text' : 'password'}
+                      placeholder="Ví dụ: eyJhbGciOi... hoặc chuỗi mã token bí mật"
+                      value={webhookSecretInput}
+                      onChange={(e) => setWebhookSecretInput(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: 38,
+                        padding: '0 38px 0 12px',
+                        fontSize: 12.5,
+                        fontFamily: 'monospace',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecretInputVisible(!showSecretInputVisible)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        padding: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title={showSecretInputVisible ? 'Ẩn mã xác thực' : 'Xem mã xác thực'}
+                    >
+                      {showSecretInputVisible ? <EyeSlash size={15} /> : <Eye size={15} />}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 11.5, color: '#64748b', marginTop: 4, lineHeight: 1.4 }}>
+                    Hệ thống sẽ gửi kèm Header <strong>Authorization: Bearer [mã token]</strong> khi gửi trạng thái tin nhắn về máy chủ của khách hàng.
+                  </div>
                 </div>
               </div>
 
@@ -1055,15 +1087,15 @@ export default function AdminCustomerDetail() {
                   >
                     Hủy
                   </button>
-                  {(editingWebhookApp.webhookDlrUrl || editingWebhookApp.webhookRatingUrl) && (
+                  {(editingWebhookApp.webhookDlrUrl || editingWebhookApp.webhookSecret) && (
                     <button
                       type="button"
                       onClick={() => {
-                        if (window.confirm('Bạn có chắc muốn xóa cả 2 URL Webhook của ứng dụng này?')) {
+                        if (window.confirm('Bạn có chắc muốn xóa toàn bộ cấu hình Webhook của ứng dụng này?')) {
                           updateWebhookMutation.mutate({
                             keyId: editingWebhookApp.keyId,
                             webhookDlrUrl: null,
-                            webhookRatingUrl: null,
+                            webhookSecret: null,
                           });
                         }
                       }}

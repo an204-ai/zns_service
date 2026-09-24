@@ -38,6 +38,7 @@ async function createApiKey(userId, keyName, appConfigId = null) {
     webhookUrl: apiKey.webhookUrl || null,
     webhookDlrUrl: apiKey.webhookDlrUrl || apiKey.webhookUrl || null,
     webhookRatingUrl: apiKey.webhookRatingUrl || null,
+    webhookSecret: apiKey.webhookSecret || null,
     createdAt: apiKey.createdAt,
   };
 }
@@ -94,6 +95,7 @@ async function getOrCreateApiKeyForApp(userId, appConfigId, keyName = null) {
     webhookUrl: key.webhookUrl || null,
     webhookDlrUrl: key.webhookDlrUrl || key.webhookUrl || null,
     webhookRatingUrl: key.webhookRatingUrl || null,
+    webhookSecret: key.webhookSecret || null,
     appConfigId: key.appConfigId,
     appConfig: key.appConfig,
     isActive: key.isActive,
@@ -132,6 +134,7 @@ async function regenerateApiKeyForApp(userId, appConfigId) {
       webhookUrl: updated.webhookUrl || null,
       webhookDlrUrl: updated.webhookDlrUrl || updated.webhookUrl || null,
       webhookRatingUrl: updated.webhookRatingUrl || null,
+      webhookSecret: updated.webhookSecret || null,
       appConfigId,
     };
   } else {
@@ -155,6 +158,7 @@ async function regenerateApiKeyForApp(userId, appConfigId) {
       webhookUrl: key.webhookUrl || null,
       webhookDlrUrl: key.webhookDlrUrl || key.webhookUrl || null,
       webhookRatingUrl: key.webhookRatingUrl || null,
+      webhookSecret: key.webhookSecret || null,
       appConfigId,
     };
   }
@@ -174,6 +178,7 @@ async function getApiKeys(userId) {
       webhookUrl: true,
       webhookDlrUrl: true,
       webhookRatingUrl: true,
+      webhookSecret: true,
       appConfigId: true,
       isActive: true,
       lastUsedAt: true,
@@ -200,6 +205,7 @@ async function getApiKeys(userId) {
       webhookUrl: k.webhookUrl || null,
       webhookDlrUrl: k.webhookDlrUrl || k.webhookUrl || null,
       webhookRatingUrl: k.webhookRatingUrl || null,
+      webhookSecret: k.webhookSecret || null,
       appConfigId: k.appConfigId,
       isActive: k.isActive,
       lastUsedAt: k.lastUsedAt,
@@ -218,9 +224,11 @@ async function updateCustomerApiKeyWebhook(id, userId, payload) {
 
   let webhookDlr = typeof payload === 'object' && payload !== null ? (payload.webhookDlrUrl !== undefined ? payload.webhookDlrUrl : payload.webhookUrl) : payload;
   let webhookRating = typeof payload === 'object' && payload !== null ? payload.webhookRatingUrl : undefined;
+  let webhookSecret = typeof payload === 'object' && payload !== null ? payload.webhookSecret : undefined;
 
   const cleanedDlr = webhookDlr !== undefined ? (webhookDlr?.trim() || null) : undefined;
   const cleanedRating = webhookRating !== undefined ? (webhookRating?.trim() || null) : undefined;
+  const cleanedSecret = webhookSecret !== undefined ? (webhookSecret?.trim() || null) : undefined;
 
   if (cleanedDlr && !/^https?:\/\/.+/i.test(cleanedDlr)) {
     throw Object.assign(new Error('Webhook URL trạng thái gửi tin (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)'), { statusCode: 400 });
@@ -237,6 +245,9 @@ async function updateCustomerApiKeyWebhook(id, userId, payload) {
   if (cleanedRating !== undefined) {
     updateData.webhookRatingUrl = cleanedRating;
   }
+  if (cleanedSecret !== undefined) {
+    updateData.webhookSecret = cleanedSecret;
+  }
 
   const updated = await prisma.apiKey.update({
     where: { id },
@@ -248,6 +259,7 @@ async function updateCustomerApiKeyWebhook(id, userId, payload) {
       webhookUrl: true,
       webhookDlrUrl: true,
       webhookRatingUrl: true,
+      webhookSecret: true,
       appConfigId: true,
     },
   });
@@ -264,9 +276,11 @@ async function adminUpdateApiKeyWebhook(id, payload) {
 
   let webhookDlr = typeof payload === 'object' && payload !== null ? (payload.webhookDlrUrl !== undefined ? payload.webhookDlrUrl : payload.webhookUrl) : payload;
   let webhookRating = typeof payload === 'object' && payload !== null ? payload.webhookRatingUrl : undefined;
+  let webhookSecret = typeof payload === 'object' && payload !== null ? payload.webhookSecret : undefined;
 
   const cleanedDlr = webhookDlr !== undefined ? (webhookDlr?.trim() || null) : undefined;
   const cleanedRating = webhookRating !== undefined ? (webhookRating?.trim() || null) : undefined;
+  const cleanedSecret = webhookSecret !== undefined ? (webhookSecret?.trim() || null) : undefined;
 
   if (cleanedDlr && !/^https?:\/\/.+/i.test(cleanedDlr)) {
     throw Object.assign(new Error('Webhook URL trạng thái gửi tin (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)'), { statusCode: 400 });
@@ -283,6 +297,9 @@ async function adminUpdateApiKeyWebhook(id, payload) {
   if (cleanedRating !== undefined) {
     updateData.webhookRatingUrl = cleanedRating;
   }
+  if (cleanedSecret !== undefined) {
+    updateData.webhookSecret = cleanedSecret;
+  }
 
   const updated = await prisma.apiKey.update({
     where: { id },
@@ -294,6 +311,7 @@ async function adminUpdateApiKeyWebhook(id, payload) {
       webhookUrl: true,
       webhookDlrUrl: true,
       webhookRatingUrl: true,
+      webhookSecret: true,
       userId: true,
       appConfigId: true,
     },

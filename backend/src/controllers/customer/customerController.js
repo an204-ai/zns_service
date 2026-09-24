@@ -149,15 +149,16 @@ async function deleteApiKey(req, res, next) {
 /** PUT /api/v1/customer/api-keys/:id/webhook */
 async function updateApiKeyWebhook(req, res, next) {
   try {
-    const { webhookUrl, webhookDlrUrl, webhookRatingUrl } = req.body;
+    const { webhookUrl, webhookDlrUrl, webhookRatingUrl, webhookSecret } = req.body;
     const result = await apiKeyService.updateCustomerApiKeyWebhook(req.params.id, req.user.id, {
       webhookUrl,
       webhookDlrUrl: webhookDlrUrl !== undefined ? webhookDlrUrl : webhookUrl,
       webhookRatingUrl,
+      webhookSecret,
     });
     res.json({
       success: true,
-      message: 'Cập nhật Webhook URL thành công',
+      message: 'Cập nhật cấu hình Webhook thành công',
       data: result,
     });
   } catch (error) {

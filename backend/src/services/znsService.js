@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 /**
  * Queue a single ZNS message for sending
  */
-async function queueMessage({ userId, fptAppConfigId, templateId, phone, templateData, refId, callbackUrl, campaignId }) {
+async function queueMessage({ userId, fptAppConfigId, templateId, phone, templateData, refId, callbackUrl, callbackSecret, campaignId }) {
   // Validate template exists and is active
   const template = await prisma.znsTemplate.findFirst({
     where: {
@@ -45,6 +45,7 @@ async function queueMessage({ userId, fptAppConfigId, templateId, phone, templat
       templateData,
       refId: refId || uuidv4(),
       callbackUrl,
+      callbackSecret,
       campaignId,
       status: 'QUEUED',
     },

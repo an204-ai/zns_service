@@ -397,15 +397,16 @@ async function getTemplateDetail(req, res, next) {
 /** PUT /api/v1/admin/customers/:id/api-keys/:keyId/webhook */
 async function updateCustomerApiKeyWebhook(req, res, next) {
   try {
-    const { webhookUrl, webhookDlrUrl, webhookRatingUrl } = req.body;
+    const { webhookUrl, webhookDlrUrl, webhookRatingUrl, webhookSecret } = req.body;
     const result = await apiKeyService.adminUpdateApiKeyWebhook(req.params.keyId, {
       webhookUrl,
       webhookDlrUrl: webhookDlrUrl !== undefined ? webhookDlrUrl : webhookUrl,
       webhookRatingUrl,
+      webhookSecret,
     });
     res.json({
       success: true,
-      message: 'Cập nhật Webhook URL cho khách hàng thành công',
+      message: 'Cập nhật cấu hình Webhook cho khách hàng thành công',
       data: result,
     });
   } catch (error) { next(error); }

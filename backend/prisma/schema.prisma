@@ -141,6 +141,7 @@ model ApiKey {
   webhookUrl       String?       @map("webhook_url") @db.Text
   webhookDlrUrl    String?       @map("webhook_dlr_url") @db.Text
   webhookRatingUrl String?       @map("webhook_rating_url") @db.Text
+  webhookSecret    String?       @map("webhook_secret") @db.Text
   isActive         Boolean       @default(true) @map("is_active")
   lastUsedAt       DateTime?     @map("last_used_at")
   createdAt        DateTime      @default(now()) @map("created_at")
@@ -188,6 +189,7 @@ model Message {
   errorCode       String?       @map("error_code") @db.VarChar(20)
   errorMessage    String?       @map("error_message") @db.Text
   callbackUrl     String?       @map("callback_url") @db.Text
+  callbackSecret  String?       @map("callback_secret") @db.Text
   retryCount      Int           @default(0) @map("retry_count")
   sentAt          DateTime?     @map("sent_at")
   deliveredAt     DateTime?     @map("delivered_at")

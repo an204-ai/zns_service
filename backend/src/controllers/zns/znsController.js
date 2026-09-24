@@ -5,7 +5,7 @@ const { prisma } = require('../../config/database');
 async function send(req, res, next) {
   try {
     const userId = req.user.id;
-    const { phone, template_id, template_data, ref_id, callback_url } = req.body;
+    const { phone, template_id, template_data, ref_id, callback_url, callback_secret } = req.body;
 
     if (!phone || !template_id || !template_data) {
       return res.status(400).json({
@@ -47,6 +47,7 @@ async function send(req, res, next) {
       templateData: template_data,
       refId: ref_id,
       callbackUrl: callback_url || req.webhookDlrUrl || req.webhookUrl,
+      callbackSecret: callback_secret || req.webhookSecret,
     });
 
     res.status(202).json({

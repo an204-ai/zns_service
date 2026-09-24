@@ -39,11 +39,14 @@ export default function CustomerAppInfo() {
   const [copiedDetailKey, setCopiedDetailKey] = useState(false);
   const [copiedDlrUrl, setCopiedDlrUrl] = useState(false);
   const [copiedRatingUrl, setCopiedRatingUrl] = useState(false);
+  const [copiedSecret, setCopiedSecret] = useState(false);
+  const [showSecretVisible, setShowSecretVisible] = useState(false);
 
   // Webhook modal states
   const [showWebhookModal, setShowWebhookModal] = useState(false);
   const [webhookDlrInput, setWebhookDlrInput] = useState('');
-  const [webhookRatingInput, setWebhookRatingInput] = useState('');
+  const [webhookSecretInput, setWebhookSecretInput] = useState('');
+  const [showSecretInputVisible, setShowSecretInputVisible] = useState(false);
   const [isSavingWebhook, setIsSavingWebhook] = useState(false);
 
   const { data: appConfigs, isLoading } = useQuery({
@@ -85,7 +88,8 @@ export default function CustomerAppInfo() {
 
   const handleOpenWebhookModal = () => {
     setWebhookDlrInput(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || '');
-    setWebhookRatingInput(selectedApp?.apiKey?.webhookRatingUrl || '');
+    setWebhookSecretInput(selectedApp?.apiKey?.webhookSecret || '');
+    setShowSecretInputVisible(false);
     setShowWebhookModal(true);
   };
 
@@ -95,14 +99,10 @@ export default function CustomerAppInfo() {
       return;
     }
     const dlrTrimmed = webhookDlrInput.trim();
-    const ratingTrimmed = webhookRatingInput.trim();
+    const secretTrimmed = webhookSecretInput.trim();
 
     if (dlrTrimmed && !/^https?:\/\/.+/i.test(dlrTrimmed)) {
       toast.error('Webhook URL nhận trạng thái (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
-      return;
-    }
-    if (ratingTrimmed && !/^https?:\/\/.+/i.test(ratingTrimmed)) {
-      toast.error('Webhook URL nhận đánh giá không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
       return;
     }
 
@@ -110,13 +110,13 @@ export default function CustomerAppInfo() {
     try {
       await api.put(`/customer/api-keys/${selectedApp.apiKey.id}/webhook`, {
         webhookDlrUrl: dlrTrimmed || null,
-        webhookRatingUrl: ratingTrimmed || null,
+        webhookSecret: secretTrimmed || null,
       });
-      toast.success('Lưu cấu hình Webhook thành công');
+      toast.success('Lưu cấu hình Webhook DLR thành công');
       queryClient.invalidateQueries({ queryKey: ['customer-app-configs'] });
       setShowWebhookModal(false);
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Không thể lưu Webhook URL');
+      toast.error(err.response?.data?.message || 'Không thể lưu cấu hình Webhook');
     } finally {
       setIsSavingWebhook(false);
     }
@@ -348,7 +348,7 @@ export default function CustomerAppInfo() {
           {/* Đường phân cách mảnh tinh tế */}
           <div style={{ height: 1, background: '#f1f5f9', margin: '14px 0 12px 0' }} />
 
-          {/* Hàng 2: Cấu hình Webhook URL Callbacks (DLR & Đánh giá) */}
+          {/* Hàng 2: Cấu hình Webhook URL DLR */}
           <div>
             <div
               style={{
@@ -357,7 +357,7 @@ export default function CustomerAppInfo() {
                 justifyContent: 'space-between',
                 gap: 12,
                 flexWrap: 'wrap',
-                marginBottom: (selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookRatingUrl) ? 10 : 0,
+                marginBottom: (selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookSecret) ? 10 : 0,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 260, flex: '1 1 auto' }}>
@@ -366,31 +366,32 @@ export default function CustomerAppInfo() {
                     width: 32,
                     height: 32,
                     borderRadius: 6,
-                    background: '#f0fdf4',
-                    color: '#16a34a',
+                    background: (selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl) ? '#f0fdf4' : '#f8fafc',
+                    color: (selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl) ? '#16a34a' : '#64748b',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
+                    border: (selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl) ? '1px solid #bbf7d0' : '1px solid #e2e8f0',
                   }}
                 >
                   <WebhooksLogo size={18} weight="bold" />
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Cấu hình Webhook Callback</span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>(Nhận kết quả DLR và Đánh giá sao)</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Cấu hình Webhook DLR</span>
+                    <span style={{ fontSize: 11, color: '#64748b' }}>(Nhận trạng thái tin nhắn tức thời)</span>
                   </div>
-                  {!(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookRatingUrl) && (
+                  {!(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookSecret) && (
                     <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                      Chưa thiết lập URL nhận callback tự động cho ứng dụng này
+                      Chưa thiết lập URL nhận trạng thái tin nhắn tự động cho ứng dụng này
                     </div>
                   )}
                 </div>
               </div>
 
               <div>
-                {!(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookRatingUrl) ? (
+                {!(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookSecret) ? (
                   <button
                     type="button"
                     onClick={handleOpenWebhookModal}
@@ -437,8 +438,8 @@ export default function CustomerAppInfo() {
               </div>
             </div>
 
-            {/* Chi tiết 2 Webhook URL khi đã cấu hình */}
-            {(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookRatingUrl) && (
+            {/* Chi tiết Webhook DLR khi đã cấu hình */}
+            {(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookSecret) && (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10, marginTop: 6 }}>
                 {/* 1. Webhook DLR */}
                 <div
@@ -494,7 +495,7 @@ export default function CustomerAppInfo() {
                   </div>
                 </div>
 
-                {/* 2. Webhook Rating */}
+                {/* 2. Mã xác thực Bearer Token */}
                 <div
                   style={{
                     background: '#f8fafc',
@@ -505,14 +506,14 @@ export default function CustomerAppInfo() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>
-                      2. Đánh giá khách hàng
+                      2. Mã xác thực (Bearer Token)
                     </span>
-                    {selectedApp?.apiKey?.webhookRatingUrl ? (
+                    {selectedApp?.apiKey?.webhookSecret ? (
                       <span style={{ fontSize: 11, color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
-                        <Check size={12} weight="bold" /> Đã kết nối
+                        <Check size={12} weight="bold" /> Đã cấu hình
                       </span>
                     ) : (
-                      <span style={{ fontSize: 11, color: '#94a3b8' }}>Chưa thiết lập</span>
+                      <span style={{ fontSize: 11, color: '#94a3b8' }}>Không dùng</span>
                     )}
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6 }}>
@@ -520,30 +521,42 @@ export default function CustomerAppInfo() {
                       style={{
                         fontFamily: 'monospace',
                         fontSize: 11.5,
-                        color: selectedApp?.apiKey?.webhookRatingUrl ? '#0f172a' : '#94a3b8',
+                        color: selectedApp?.apiKey?.webhookSecret ? '#0f172a' : '#94a3b8',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         whiteSpace: 'nowrap',
                         flex: 1,
                       }}
-                      title={selectedApp?.apiKey?.webhookRatingUrl || 'Chưa thiết lập'}
+                      title={selectedApp?.apiKey?.webhookSecret || 'Không cấu hình mã xác thực'}
                     >
-                      {selectedApp?.apiKey?.webhookRatingUrl || 'Chưa thiết lập URL'}
+                      {selectedApp?.apiKey?.webhookSecret
+                        ? (showSecretVisible ? `Bearer ${selectedApp.apiKey.webhookSecret.replace(/^Bearer\s+/i, '')}` : '••••••••••••••••')
+                        : 'Không yêu cầu mã'}
                     </div>
-                    {selectedApp?.apiKey?.webhookRatingUrl && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          navigator.clipboard.writeText(selectedApp?.apiKey?.webhookRatingUrl);
-                          setCopiedRatingUrl(true);
-                          setTimeout(() => setCopiedRatingUrl(false), 2000);
-                          toast.success('Đã sao chép URL');
-                        }}
-                        style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, color: '#64748b' }}
-                        title="Sao chép URL"
-                      >
-                        {copiedRatingUrl ? <Check size={13} color="#059669" /> : <CopySimple size={13} />}
-                      </button>
+                    {selectedApp?.apiKey?.webhookSecret && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                        <button
+                          type="button"
+                          onClick={() => setShowSecretVisible(!showSecretVisible)}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, color: '#64748b' }}
+                          title={showSecretVisible ? 'Ẩn mã Bearer' : 'Xem mã Bearer'}
+                        >
+                          {showSecretVisible ? <EyeSlash size={13} /> : <Eye size={13} />}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            navigator.clipboard.writeText(selectedApp?.apiKey?.webhookSecret.replace(/^Bearer\s+/i, ''));
+                            setCopiedSecret(true);
+                            setTimeout(() => setCopiedSecret(false), 2000);
+                            toast.success('Đã sao chép mã Token');
+                          }}
+                          style={{ border: 'none', background: 'transparent', cursor: 'pointer', padding: 2, color: '#64748b' }}
+                          title="Sao chép mã Token"
+                        >
+                          {copiedSecret ? <Check size={13} color="#059669" /> : <CopySimple size={13} />}
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -810,7 +823,7 @@ export default function CustomerAppInfo() {
                 }}
               >
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0, textAlign: 'left' }}>
-                  Cài đặt Webhook Callback
+                  Cài đặt Webhook DLR
                 </h2>
                 <button
                   type="button"
@@ -846,7 +859,7 @@ export default function CustomerAppInfo() {
                   gap: 18,
                 }}
               >
-                {/* Webhook 1: DLR */}
+                {/* Webhook DLR URL */}
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 6, textAlign: 'left' }}>
                     Webhook URL nhận trạng thái gửi tin (DLR)
@@ -870,32 +883,64 @@ export default function CustomerAppInfo() {
                       boxSizing: 'border-box',
                     }}
                   />
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: 1.4, textAlign: 'left' }}>
+                    Địa chỉ API trên máy chủ của bạn để hệ thống gửi dữ liệu trạng thái tin nhắn về khi FPT phản hồi.
+                  </div>
                 </div>
 
-                {/* Webhook 2: Rating */}
+                {/* Mã Bearer Token Header */}
                 <div>
-                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 6, textAlign: 'left' }}>
-                    Webhook URL nhận đánh giá của khách hàng
-                  </label>
-                  <input
-                    type="url"
-                    placeholder="https://your-domain.com/webhook/zns-rating"
-                    value={webhookRatingInput}
-                    onChange={(e) => setWebhookRatingInput(e.target.value)}
-                    style={{
-                      width: '100%',
-                      height: 40,
-                      padding: '8px 12px',
-                      fontSize: 13,
-                      fontFamily: 'monospace',
-                      borderRadius: 6,
-                      border: '1px solid #cbd5e1',
-                      background: '#ffffff',
-                      color: '#0f172a',
-                      outline: 'none',
-                      boxSizing: 'border-box',
-                    }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                    <label style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0, textAlign: 'left' }}>
+                      Mã xác thực Bearer Token (Header Authorization)
+                    </label>
+                    <span style={{ fontSize: 11.5, color: '#64748b' }}>Tùy chọn</span>
+                  </div>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type={showSecretInputVisible ? 'text' : 'password'}
+                      placeholder="Ví dụ: eyJhbGciOi... hoặc chuỗi mã token bí mật"
+                      value={webhookSecretInput}
+                      onChange={(e) => setWebhookSecretInput(e.target.value)}
+                      style={{
+                        width: '100%',
+                        height: 40,
+                        padding: '8px 40px 8px 12px',
+                        fontSize: 13,
+                        fontFamily: 'monospace',
+                        borderRadius: 6,
+                        border: '1px solid #cbd5e1',
+                        background: '#ffffff',
+                        color: '#0f172a',
+                        outline: 'none',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSecretInputVisible(!showSecretInputVisible)}
+                      style={{
+                        position: 'absolute',
+                        right: 8,
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        border: 'none',
+                        background: 'transparent',
+                        color: '#64748b',
+                        cursor: 'pointer',
+                        padding: 4,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                      title={showSecretInputVisible ? 'Ẩn mã xác thực' : 'Xem mã xác thực'}
+                    >
+                      {showSecretInputVisible ? <EyeSlash size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: 1.4, textAlign: 'left' }}>
+                    Hệ thống sẽ gửi kèm Header <strong>Authorization: Bearer [mã token]</strong> khi gửi trạng thái tin nhắn về máy chủ của bạn.
+                  </div>
                 </div>
               </div>
 
@@ -1125,7 +1170,7 @@ export default function CustomerAppInfo() {
                                 <span style={{ fontSize: 11 }}>{isCopied ? 'Đã chép' : 'Chép'}</span>
                               </button>
                             </div>
-                            {(app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || app.apiKey.webhookRatingUrl) && (
+                            {(app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || app.apiKey.webhookSecret) && (
                               <div
                                 style={{
                                   display: 'inline-flex',
@@ -1139,13 +1184,11 @@ export default function CustomerAppInfo() {
                                   textOverflow: 'ellipsis',
                                   whiteSpace: 'nowrap',
                                 }}
-                                title={`Webhook DLR: ${app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || 'Chưa cấu hình'}\nWebhook Đánh giá: ${app.apiKey.webhookRatingUrl || 'Chưa cấu hình'}`}
+                                title={`Webhook DLR: ${app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl || 'Chưa cấu hình'}\nBearer Token: ${app.apiKey.webhookSecret ? 'Đã cài đặt' : 'Không dùng'}`}
                               >
                                 <WebhooksLogo size={12} weight="bold" />
                                 <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {app.apiKey.webhookDlrUrl && app.apiKey.webhookRatingUrl
-                                    ? 'Đã kết nối 2 Webhook'
-                                    : (app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl ? 'Webhook DLR' : 'Webhook Đánh giá')}
+                                  {app.apiKey.webhookDlrUrl || app.apiKey.webhookUrl ? 'Webhook DLR' : 'Bearer Token'}
                                 </span>
                               </div>
                             )}

@@ -131,8 +131,13 @@ async function startWorker() {
     if (!msg) return;
 
     try {
-      const { callbackUrl, data } = JSON.parse(msg.content.toString());
-      await axios.post(callbackUrl, data, { timeout: 10000 });
+      const { callbackUrl, secret, data } = JSON.parse(msg.content.toString());
+      const headers = { 'Content-Type': 'application/json' };
+      if (secret) {
+        const cleanToken = secret.trim().replace(/^Bearer\s+/i, '');
+        headers['Authorization'] = `Bearer ${cleanToken}`;
+      }
+      await axios.post(callbackUrl, data, { headers, timeout: 10000 });
       console.log(`📤 Callback sent to ${callbackUrl}`);
     } catch (error) {
       console.error('Callback delivery error:', error.message);
