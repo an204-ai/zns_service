@@ -48,20 +48,7 @@ async function createAppConfig({ userId, appName, fptAppId, fptSecretKey, isSyst
     );
   }
 
-  // 2. Nếu lấy được OA ID từ FPT, kiểm tra xem Zalo OA này đã được liên kết với App khác chưa
-  if (oaInfo?.oa_id) {
-    const existingByOaId = await prisma.fptAppConfig.findFirst({
-      where: { oaId: String(oaInfo.oa_id).trim() },
-      select: { id: true, appName: true, isSystem: true, fptAppId: true },
-    });
-    if (existingByOaId) {
-      const typeStr = existingByOaId.isSystem ? 'Ứng dụng hệ thống' : 'Ứng dụng cá nhân';
-      throw Object.assign(
-        new Error(`Zalo Official Account này (Mã OA: ${oaInfo.oa_id}) đã được liên kết với ${typeStr} "${existingByOaId.appName}" (App ID: ${existingByOaId.fptAppId}). Không thể kết nối trùng lặp.`),
-        { statusCode: 400 }
-      );
-    }
-  }
+  // 2. Không giới hạn trùng OA ID vì 1 Zalo OA có thể được cấp nhiều App ID khác nhau trên FPT ZBS
 
   const appConfig = await prisma.fptAppConfig.create({
     data: {
