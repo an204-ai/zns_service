@@ -3,6 +3,6 @@ node_modules/
 .DS_Store
 dist/
 build/
-
+scripts
 # Local seed scripts (not pushed to production/VPS)
 seed_local.js
