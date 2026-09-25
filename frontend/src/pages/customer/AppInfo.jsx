@@ -276,7 +276,7 @@ export default function CustomerAppInfo() {
               flexWrap: 'wrap',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 240, flex: '1 1 auto' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto' }}>
               <div
                 style={{
                   width: 32,
@@ -359,7 +359,7 @@ export default function CustomerAppInfo() {
                 marginBottom: (selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookSecret) ? 10 : 0,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 260, flex: '1 1 auto' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '1 1 auto' }}>
                 <div
                   style={{
                     width: 32,
@@ -438,7 +438,7 @@ export default function CustomerAppInfo() {
 
             {/* Chi tiết Webhook DLR khi đã cấu hình */}
             {(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookSecret) && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10, marginTop: 6 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: 10, marginTop: 6 }}>
                 {/* 1. Webhook DLR */}
                 <div
                   style={{

@@ -31,7 +31,7 @@ export default function CustomerProfile() {
     <div>
       {msg && <div style={{ padding: '10px 14px', background: 'var(--color-success-bg)', border: '1px solid var(--color-success-light)', borderRadius: 'var(--border-radius)', color: 'var(--color-success)', fontSize: 'var(--font-size-sm)', marginBottom: 'var(--spacing-md)' }}>{msg}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
+      <div className="form-grid-2">
         <div className="card">
           <div className="card-header">
             <div className="card-header-title">Thông tin cá nhân</div>

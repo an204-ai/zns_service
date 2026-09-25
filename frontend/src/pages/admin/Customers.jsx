@@ -457,7 +457,7 @@ export default function AdminCustomers() {
             </div>
             <form onSubmit={handleCreateCustomer}>
               <div className="modal-body">
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)' }}>
+                <div className="form-grid-2">
                   <div className="form-group" style={{ marginBottom: 'var(--spacing-sm)' }}>
                     <label className="form-label" style={{ fontWeight: 500 }}>Họ tên khách hàng *</label>
                     <input
@@ -479,7 +479,7 @@ export default function AdminCustomers() {
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-xs)' }}>
+                <div className="form-grid-2" style={{ marginTop: 'var(--spacing-xs)' }}>
                   <div className="form-group" style={{ marginBottom: 'var(--spacing-sm)' }}>
                     <label className="form-label" style={{ fontWeight: 500 }}>Email đăng nhập *</label>
                     <input

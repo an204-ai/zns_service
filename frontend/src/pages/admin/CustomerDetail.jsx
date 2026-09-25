@@ -1004,7 +1004,7 @@ export default function AdminCustomerDetail() {
                   </div>
 
                   {/* Grid 2 cột: FPT App ID và OA ID */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                  <div className="form-grid-2" style={{ gap: 12 }}>
                     <div>
                       <span style={{ fontSize: 11.5, color: '#64748b', display: 'block', marginBottom: 3 }}>FPT App ID:</span>
                       <code style={{ fontSize: 12, fontWeight: 600, color: '#0f172a', background: '#ffffff', padding: '3px 8px', borderRadius: 4, border: '1px solid #e2e8f0', display: 'inline-block' }}>

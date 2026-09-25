@@ -1,5 +1,5 @@
 import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import {
   SquaresFour,
@@ -14,7 +14,8 @@ import {
   Key,
   CaretUpDown,
   User,
-  CreditCard
+  CreditCard,
+  X
 } from '@phosphor-icons/react';
 import ProfileModal from '../components/ProfileModal';
 import ChangePasswordModal from '../components/ChangePasswordModal';
@@ -42,9 +43,23 @@ export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
+
+  // Tự động đóng menu trên mobile khi chuyển trang
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  const handleToggleSidebar = () => {
+    if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+      setMobileMenuOpen(prev => !prev);
+    } else {
+      setSidebarCollapsed(prev => !prev);
+    }
+  };
 
   const allItems = navGroups.flatMap(g => g.items);
   const activeItem = allItems.find((item) =>
@@ -66,12 +81,30 @@ export default function AdminLayout() {
 
   return (
     <div className={`app-layout ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''}`}>
-      <aside className="sidebar">
+      {/* Mobile backdrop overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="sidebar-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      <aside className={`sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-brand">
           <div className="sidebar-brand-logo">
             <span className="sidebar-brand-title">ZNS PORTAL</span>
             <span className="sidebar-brand-subtitle">Admin Console</span>
           </div>
+          <button
+            type="button"
+            className="sidebar-mobile-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            title="Đóng thanh bên"
+            aria-label="Đóng thanh bên"
+          >
+            <X size={18} weight="bold" />
+          </button>
         </div>
 
         <nav className="sidebar-nav">
@@ -85,6 +118,7 @@ export default function AdminLayout() {
                   end={item.end}
                   className={({ isActive }) => `sidebar-link${isActive ? ' active' : ''}`}
                   title={item.label}
+                  onClick={() => setMobileMenuOpen(false)}
                 >
                   <item.icon size={17} weight="regular" />
                   <span>{item.label}</span>
@@ -120,7 +154,7 @@ export default function AdminLayout() {
             <button
               type="button"
               className="sidebar-toggle-btn"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+              onClick={handleToggleSidebar}
               title={sidebarCollapsed ? 'Mở rộng thanh bên' : 'Thu gọn thanh bên'}
               aria-label="Thu gọn hoặc mở rộng thanh bên"
             >

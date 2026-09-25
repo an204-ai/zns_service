@@ -389,7 +389,7 @@ export default function AdminAppConfigs() {
                   <label className="form-label" style={{ fontWeight: 600, marginBottom: 8, display: 'block' }}>
                     Chọn loại ứng dụng *
                   </label>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  <div className="form-grid-2" style={{ gap: 10 }}>
                     {/* Option 1: Ứng dụng hệ thống */}
                     <div
                       onClick={() => setFormData({ ...formData, isSystem: true })}

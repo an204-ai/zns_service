@@ -131,7 +131,7 @@ export default function CustomerSendMessage() {
         <div className="card-body" style={{ padding: 'var(--spacing-xl)' }}>
           <form onSubmit={handleSubmit}>
             {/* Hàng 1: Chọn OA và Chọn Template */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--spacing-md)', marginBottom: 'var(--spacing-md)' }}>
+            <div className="form-grid-2" style={{ marginBottom: 'var(--spacing-md)' }}>
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" style={{ fontWeight: 500 }}>Chọn ứng dụng gửi tin *</label>
                 <CustomSelect
@@ -239,11 +239,10 @@ export default function CustomerSendMessage() {
                 <div style={{ fontWeight: 600, fontSize: 'var(--font-size-sm)', marginBottom: 'var(--spacing-sm)', color: 'var(--text-primary)' }}>
                   Tham số nội dung mẫu tin ({selectedTemplate.listParams.length} tham số)
                 </div>
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: selectedTemplate.listParams.length > 1 ? '1fr 1fr' : '1fr',
-                  gap: 'var(--spacing-sm)'
-                }}>
+                <div
+                  className={selectedTemplate.listParams.length > 1 ? 'form-grid-2' : ''}
+                  style={{ gap: 'var(--spacing-sm)' }}
+                >
                   {selectedTemplate.listParams.map(p => (
                     <div key={p.name}>
                       <label className="form-label" style={{ fontSize: 'var(--font-size-xs)', fontWeight: 500, marginBottom: 3 }}>
@@ -265,7 +264,7 @@ export default function CustomerSendMessage() {
             )}
 
             {/* Hàng 4: Nút Gửi tin & Nút Đặt lại */}
-            <div style={{ display: 'flex', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--spacing-md)', marginTop: 'var(--spacing-lg)' }}>
               <button
                 type="submit"
                 className="btn btn-primary btn-lg"
