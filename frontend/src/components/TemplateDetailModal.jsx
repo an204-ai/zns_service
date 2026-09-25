@@ -13,19 +13,102 @@ import {
   ArrowsClockwise,
   Phone,
   Link,
-  Info
+  Info,
+  ShieldCheck,
+  DeviceMobile,
 } from '@phosphor-icons/react';
 
+function formatParamLabel(paramName = '') {
+  const map = {
+    customer_name: 'Khách hàng',
+    ten_khach_hang: 'Khách hàng',
+    name: 'Khách hàng',
+    order_code: 'Mã đơn hàng',
+    order_id: 'Mã đơn hàng',
+    ma_don_hang: 'Mã đơn hàng',
+    amount: 'Số tiền',
+    so_tien: 'Số tiền',
+    price: 'Số tiền',
+    date: 'Ngày thực hiện',
+    time: 'Thời gian',
+    phone: 'Số điện thoại',
+    otp: 'Mã OTP',
+    status: 'Trạng thái',
+    address: 'Địa chỉ',
+    product_name: 'Sản phẩm',
+    tracking_code: 'Mã vận đơn',
+  };
+  if (map[paramName.toLowerCase()]) return map[paramName.toLowerCase()];
+  return paramName.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase());
+}
+
+function getSampleParamValue(paramName = '') {
+  const map = {
+    customer_name: 'Nguyễn Văn A',
+    ten_khach_hang: 'Nguyễn Văn A',
+    name: 'Nguyễn Văn A',
+    order_code: 'DH20260925',
+    order_id: 'DH20260925',
+    ma_don_hang: 'DH20260925',
+    amount: '500.000 đ',
+    so_tien: '500.000 đ',
+    price: '350.000 đ',
+    date: '25/09/2026',
+    time: '09:30',
+    phone: '0987654321',
+    otp: '849201',
+    status: 'Thành công',
+    product_name: 'Đơn hàng tiêu chuẩn',
+    address: 'Hà Nội, Việt Nam',
+    tracking_code: 'VNPOST123456',
+  };
+  if (map[paramName.toLowerCase()]) return map[paramName.toLowerCase()];
+  return `<giá_trị_${paramName}>`;
+}
+
+function renderFormattedContent(content = '') {
+  if (!content) return null;
+  const parts = content.split(/(<[a-zA-Z0-9_]+>|\{\{[a-zA-Z0-9_]+\}\}|\{[a-zA-Z0-9_]+\})/g);
+  return parts.map((part, i) => {
+    const match = part.match(/^[<{]{1,2}([a-zA-Z0-9_]+)[>}]{1,2}$/);
+    if (match) {
+      const pName = match[1];
+      const sample = getSampleParamValue(pName);
+      return (
+        <span
+          key={i}
+          style={{
+            background: '#eff6ff',
+            color: '#1d4ed8',
+            padding: '1px 6px',
+            borderRadius: 4,
+            fontWeight: 600,
+            border: '1px solid #bfdbfe',
+            margin: '0 2px',
+          }}
+          title={`Tham số: ${pName}`}
+        >
+          {sample}
+        </span>
+      );
+    }
+    return part;
+  });
+}
+
 export default function TemplateDetailModal({
-  isOpen,
+  isOpen = true,
   onClose,
-  templateId,
-  appId,
+  template,
+  templateId: propTemplateId,
+  appId: propAppId,
   oaId,
-  initialData = null,
-  isAdmin = false
+  initialData: propInitialData = null,
+  isAdmin = false,
 }) {
-  const targetAppId = appId || oaId;
+  const templateId = propTemplateId || template?.templateId || template?.id;
+  const initialData = propInitialData || template || null;
+  const targetAppId = propAppId || initialData?.fptAppConfigId || oaId;
   const [activeTab, setActiveTab] = useState('info'); // 'info' | 'ratings'
   const [isRefreshingDetail, setIsRefreshingDetail] = useState(false);
 
@@ -98,7 +181,8 @@ export default function TemplateDetailModal({
     staleTime: 30000,
   });
 
-  if (!isOpen) return null;
+  if (isOpen === false) return null;
+  if (!templateId && !initialData) return null;
 
   const tpl = detailData || initialData || {};
   const params = tpl.listParams || [];
@@ -298,7 +382,7 @@ export default function TemplateDetailModal({
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <Info size={18} color="#b45309" weight="bold" />
                     <span>
-                      <strong>Thông báo FPT ZBS:</strong> {detailError?.response?.data?.message || detailError?.message || tpl.liveDetailError}
+                      <strong>Thông báo từ nhà mạng:</strong> {detailError?.response?.data?.message || detailError?.message || tpl.liveDetailError}
                     </span>
                   </div>
                   <button
@@ -384,62 +468,251 @@ export default function TemplateDetailModal({
                 )}
               </div>
 
-              {/* Template Content Box */}
-              {tpl.templateContent && (
-                <div style={{ marginBottom: 18 }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
-                    Nội dung bản tin mẫu
-                  </label>
+              {/* Khung mô phỏng tin nhắn hiển thị trên Zalo (Zalo ZNS Preview) */}
+              <div style={{ marginBottom: 20 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <DeviceMobile size={17} color="#0068ff" weight="bold" />
+                    <label style={{ fontWeight: 600, fontSize: 13, color: '#0f172a', margin: 0 }}>
+                      Mô phỏng tin nhắn hiển thị trên Zalo
+                    </label>
+                  </div>
+                  <span style={{ fontSize: 11.5, color: '#64748b' }}>
+                    Giao diện thực tế người nhận nhìn thấy trên điện thoại
+                  </span>
+                </div>
+
+                {/* Khung Zalo Chat View */}
+                <div
+                  style={{
+                    background: '#e5edf5',
+                    borderRadius: 12,
+                    padding: '20px 16px',
+                    border: '1px solid #cbd5e1',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                  }}
+                >
+                  {/* Timestamp trung tâm Zalo */}
                   <div
                     style={{
-                      background: '#ffffff',
-                      border: '1px solid #cbd5e1',
-                      borderRadius: 8,
-                      padding: '12px 16px',
-                      fontSize: 13,
-                      lineHeight: 1.6,
-                      color: '#1e293b',
-                      whiteSpace: 'pre-wrap',
-                      fontFamily: 'inherit'
+                      background: 'rgba(0, 0, 0, 0.12)',
+                      color: '#475569',
+                      fontSize: 11,
+                      fontWeight: 500,
+                      padding: '2px 10px',
+                      borderRadius: 10,
+                      marginBottom: 12,
                     }}
                   >
-                    {tpl.templateContent}
+                    Hôm nay 09:30
                   </div>
-                </div>
-              )}
 
-              {/* Action Buttons CTAs */}
-              {buttons && buttons.length > 0 && (
-                <div style={{ marginBottom: 18 }}>
-                  <label className="form-label" style={{ fontWeight: 600, fontSize: 13, marginBottom: 6 }}>
-                    Nút bấm tương tác trên tin nhắn ({buttons.length})
-                  </label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                    {buttons.map((btn, idx) => (
-                      <div
-                        key={idx}
+                  {/* Zalo ZNS Message Bubble Card */}
+                  <div
+                    style={{
+                      maxWidth: 420,
+                      width: '100%',
+                      background: '#ffffff',
+                      borderRadius: 14,
+                      boxShadow: '0 4px 14px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05)',
+                      border: '1px solid #dbeafe',
+                      overflow: 'hidden',
+                      textAlign: 'left',
+                    }}
+                  >
+                    {/* Header: Official Account info */}
+                    <div
+                      style={{
+                        padding: '12px 16px',
+                        borderBottom: '1px solid #f1f5f9',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        background: '#fafafa',
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div
+                          style={{
+                            width: 34,
+                            height: 34,
+                            borderRadius: '50%',
+                            background: '#0068ff',
+                            color: '#ffffff',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontWeight: 700,
+                            fontSize: 14,
+                            flexShrink: 0,
+                          }}
+                        >
+                          Z
+                        </div>
+                        <div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: '#0f172a' }}>
+                              {tpl.fptAppConfig?.appName || initialData?.appName || 'Zalo Official Account'}
+                            </span>
+                            <CheckCircle size={14} weight="fill" color="#0068ff" />
+                          </div>
+                          <div style={{ fontSize: 11, color: '#64748b' }}>
+                            Thông báo ZNS xác thực
+                          </div>
+                        </div>
+                      </div>
+
+                      <span
                         style={{
-                          background: '#f1f5f9',
-                          border: '1px solid #e2e8f0',
-                          borderRadius: 6,
-                          padding: '6px 12px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: 6,
-                          fontSize: 12,
-                          color: '#0f172a'
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          fontSize: 10.5,
+                          fontWeight: 600,
+                          padding: '2px 6px',
+                          borderRadius: 4,
                         }}
                       >
-                        {btn.type === 'oa.open.url' ? <Link size={14} color="#2563eb" /> : <Phone size={14} color="#059669" />}
-                        <strong style={{ fontWeight: 600 }}>{btn.title || btn.name}</strong>
-                        {btn.type && (
-                          <span style={{ fontSize: 10.5, color: '#64748b' }}>({btn.type})</span>
-                        )}
+                        {tpl.templateTag || 'Chăm sóc KH'}
+                      </span>
+                    </div>
+
+                    {/* Body của tin nhắn Zalo */}
+                    <div style={{ padding: '16px' }}>
+                      {/* Tiêu đề thông báo ZNS */}
+                      <div
+                        style={{
+                          fontSize: 14.5,
+                          fontWeight: 700,
+                          color: '#0f172a',
+                          marginBottom: 10,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {tpl.templateName || 'Thông báo từ doanh nghiệp'}
                       </div>
-                    ))}
+
+                      {/* Nội dung thông điệp chính */}
+                      {tpl.templateContent ? (
+                        <div
+                          style={{
+                            fontSize: 13,
+                            color: '#334155',
+                            lineHeight: 1.6,
+                            whiteSpace: 'pre-wrap',
+                            marginBottom: 14,
+                          }}
+                        >
+                          {renderFormattedContent(tpl.templateContent)}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 13, color: '#334155', lineHeight: 1.6, marginBottom: 14 }}>
+                          Kính gửi Quý khách, hệ thống gửi thông báo xác nhận giao dịch của Quý khách theo thông tin chi tiết dưới đây:
+                        </div>
+                      )}
+
+                      {/* Bảng thông tin tham số giao dịch chuẩn ZNS */}
+                      {params && params.length > 0 && (
+                        <div
+                          style={{
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 8,
+                            padding: '10px 14px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 8,
+                            marginBottom: 14,
+                          }}
+                        >
+                          {params.map((p, idx) => (
+                            <div
+                              key={p.name || idx}
+                              style={{
+                                display: 'flex',
+                                alignItems: 'flex-start',
+                                justifyContent: 'space-between',
+                                gap: 12,
+                                fontSize: 12.5,
+                              }}
+                            >
+                              <span style={{ color: '#64748b', flex: '0 0 auto' }}>
+                                {formatParamLabel(p.name)}:
+                              </span>
+                              <span style={{ color: '#0f172a', fontWeight: 600, textAlign: 'right', wordBreak: 'break-word' }}>
+                                {getSampleParamValue(p.name)}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Nút bấm tương tác trên tin nhắn Zalo */}
+                      {buttons && buttons.length > 0 ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 12 }}>
+                          {buttons.map((btn, idx) => (
+                            <div
+                              key={idx}
+                              style={{
+                                height: 36,
+                                borderRadius: 6,
+                                border: '1px solid #bfdbfe',
+                                background: '#f0f7ff',
+                                color: '#0284c7',
+                                fontSize: 12.5,
+                                fontWeight: 600,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                gap: 6,
+                                cursor: 'pointer',
+                              }}
+                            >
+                              {btn.type === 'oa.open.url' ? <Link size={14} color="#0284c7" /> : <Phone size={14} color="#059669" />}
+                              <span>{btn.title || btn.name || 'Xem chi tiết'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div
+                          style={{
+                            height: 36,
+                            borderRadius: 6,
+                            border: '1px solid #e2e8f0',
+                            background: '#f8fafc',
+                            color: '#0284c7',
+                            fontSize: 12.5,
+                            fontWeight: 600,
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: 6,
+                            marginTop: 12,
+                          }}
+                        >
+                          <ArrowSquareOut size={14} color="#0284c7" />
+                          <span>Xem chi tiết thông báo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Footer của bubble Zalo */}
+                    <div
+                      style={{
+                        padding: '8px 16px',
+                        background: '#f8fafc',
+                        borderTop: '1px solid #f1f5f9',
+                        fontSize: 11,
+                        color: '#94a3b8',
+                        textAlign: 'center',
+                      }}
+                    >
+                      Tin nhắn chính thức gửi qua Zalo Notification Service (ZNS)
+                    </div>
                   </div>
                 </div>
-              )}
+              </div>
 
               {/* Parameters Table */}
               <div>
@@ -577,10 +850,10 @@ export default function TemplateDetailModal({
                     <Warning size={20} color="#dc2626" weight="bold" style={{ marginTop: 2, flexShrink: 0 }} />
                     <div>
                       <div style={{ fontSize: 13.5, fontWeight: 600, color: '#991b1b' }}>
-                        Không thể lấy đánh giá từ máy chủ FPT ZBS
+                        Không thể lấy đánh giá từ máy chủ nhà mạng
                       </div>
                       <div style={{ fontSize: 12.5, color: '#b91c1c', marginTop: 2 }}>
-                        {ratingsError?.response?.data?.message || ratingsError?.message || 'Lỗi kết nối máy chủ FPT'}
+                        {ratingsError?.response?.data?.message || ratingsError?.message || 'Lỗi kết nối máy chủ nhà mạng'}
                       </div>
                     </div>
                   </div>
@@ -696,7 +969,7 @@ export default function TemplateDetailModal({
                       </thead>
                       <tbody>
                         {ratingsList.map((r, idx) => (
-                          <tr key={r.msg_id || idx}>
+                          <tr key={r.message_id || r.msg_id || idx}>
                             <td className="table-col-index">{(ratingPage - 1) * 20 + idx + 1}</td>
                             <td style={{ textAlign: 'center' }}>
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: 2, color: '#f59e0b', fontWeight: 700 }}>

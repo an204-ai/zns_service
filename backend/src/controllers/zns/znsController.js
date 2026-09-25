@@ -72,7 +72,7 @@ async function getStatus(req, res, next) {
         phone: message.phone,
         template_id: message.templateId,
         status: message.status,
-        fpt_message_id: message.fptMessageId,
+        message_id: message.messageId,
         error_code: message.errorCode,
         error_message: message.errorMessage,
         sent_at: message.sentAt,

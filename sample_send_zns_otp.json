@@ -1,9 +1,0 @@
-{
-  "phone": "84765638196",
-  "template_id": 24497,
-  "template_data": {
-    "otp": "686868"
-  },
-  "ref_id": "OTP_TEST_001",
-  "callback_url": ""
-}

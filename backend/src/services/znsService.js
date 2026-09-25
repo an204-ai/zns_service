@@ -105,7 +105,7 @@ async function queueBatchMessages({ userId, fptAppConfigId, templateId, records,
  */
 async function handleDLR({ msgId, type, status, sentTime, receivedTime, error, errorInfo }) {
   const message = await prisma.message.findFirst({
-    where: { fptMessageId: msgId },
+    where: { messageId: msgId },
   });
 
   if (!message) {

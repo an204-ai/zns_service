@@ -277,6 +277,7 @@ export default function AdminCustomers() {
                     return (
                       <tr
                         key={c.id}
+                        className="clickable-row"
                         onClick={() => navigate(`/admin/customers/${c.id}`)}
                         style={{ cursor: 'pointer' }}
                         title="Bấm để xem chi tiết khách hàng"

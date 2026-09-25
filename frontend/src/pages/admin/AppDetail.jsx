@@ -344,13 +344,13 @@ export default function AdminAppDetail() {
           {isQuotaLoading ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b' }}>
               <div className="spinner" style={{ width: 14, height: 14 }} />
-              <span>Đang kiểm tra hạn mức từ máy chủ FPT...</span>
+              <span>Đang kiểm tra hạn mức từ nhà mạng...</span>
             </div>
           ) : isQuotaError ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#991b1b', flexWrap: 'wrap' }}>
               <WarningCircle size={16} color="#dc2626" weight="bold" />
               <span>
-                Không thể lấy hạn mức FPT: <span style={{ color: '#b91c1c' }}>{quotaError?.response?.data?.message || quotaError?.message || 'Timeout / Lỗi kết nối'}</span>
+                Không thể kết nối đến cổng nhà mạng: <span style={{ color: '#b91c1c' }}>{quotaError?.response?.data?.message || quotaError?.message || 'Timeout / Lỗi kết nối'}</span>
               </span>
               <button
                 type="button"
@@ -409,7 +409,7 @@ export default function AdminAppDetail() {
             </div>
           ) : (
             <div style={{ color: '#64748b' }}>
-              Chưa có dữ liệu hạn mức từ FPT Telecom. Bấm "Làm mới" để kiểm tra.
+              Chưa có dữ liệu hạn mức từ nhà mạng. Bấm "Làm mới" để kiểm tra.
             </div>
           )}
 
@@ -427,7 +427,7 @@ export default function AdminAppDetail() {
               gap: 4,
               color: '#475569',
             }}
-            title="Làm mới thông tin hạn mức từ FPT"
+            title="Làm mới thông tin hạn mức từ nhà mạng"
           >
             <ArrowsClockwise size={12} className={isQuotaLoading ? 'spin' : ''} />
             <span>Làm mới</span>
@@ -545,10 +545,10 @@ export default function AdminAppDetail() {
         >
           <div>
             <h2 style={{ fontSize: 15, fontWeight: 600, color: '#0f172a', margin: 0 }}>
-              Mẫu tin nhắn ZNS đã duyệt ({app.templates?.length || 0})
+              Mẫu tin nhắn ZNS đã duyệt
             </h2>
             <p style={{ fontSize: 12, color: '#64748b', margin: '4px 0 0 0' }}>
-              Danh sách mẫu tin được đồng bộ trực tiếp từ cổng FPT Telecom
+              Danh sách mẫu tin được đồng bộ trực tiếp từ cổng nhà mạng
             </p>
           </div>
           <button
@@ -559,7 +559,7 @@ export default function AdminAppDetail() {
             style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 500 }}
           >
             <ArrowsClockwise size={14} className={syncMutation.isPending ? 'spin' : ''} />
-            {syncMutation.isPending ? 'Đang đồng bộ...' : 'Đồng bộ từ FPT'}
+            {syncMutation.isPending ? 'Đang đồng bộ...' : 'Đồng bộ nhà mạng'}
           </button>
         </div>
 
@@ -631,7 +631,7 @@ export default function AdminAppDetail() {
                       Chưa có mẫu tin nhắn nào
                     </div>
                     <p style={{ color: '#64748b', fontSize: 12.5, marginTop: 4 }}>
-                      Bấm nút "Đồng bộ từ FPT" ở góc phải để tải danh sách mẫu tin mới nhất từ hệ thống FPT Telecom.
+                      Bấm nút "Đồng bộ nhà mạng" ở góc phải để tải danh sách mẫu tin mới nhất từ hệ thống nhà mạng.
                     </p>
                   </td>
                 </tr>
@@ -644,7 +644,9 @@ export default function AdminAppDetail() {
       {/* Template Detail Modal */}
       {selectedTemplate && (
         <TemplateDetailModal
-          template={selectedTemplate}
+          isOpen={true}
+          templateId={selectedTemplate.templateId}
+          initialData={selectedTemplate}
           appId={id}
           isAdmin={true}
           onClose={() => setSelectedTemplate(null)}

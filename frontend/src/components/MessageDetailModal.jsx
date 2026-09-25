@@ -116,8 +116,11 @@ export default function MessageDetailModal({ isOpen, onClose, message }) {
             <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0, textAlign: 'left' }}>
               Chi tiết tin nhắn
             </h2>
-            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, textAlign: 'left' }}>
-              Mã tham chiếu: <span style={{ fontFamily: 'monospace', color: '#334155', fontWeight: 600 }}>{m.refId || m.id}</span>
+            <div style={{ fontSize: 12, color: '#64748b', marginTop: 3, textAlign: 'left', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span>Mã tham chiếu: <span style={{ fontFamily: 'monospace', color: '#334155', fontWeight: 600 }}>{m.refId || m.id}</span></span>
+              {(m.messageId || m.message_id) && (
+                <span>Mã tin nhắn: <span style={{ fontFamily: 'monospace', color: '#2563eb', fontWeight: 600 }}>{m.messageId || m.message_id}</span></span>
+              )}
             </div>
           </div>
           <button
@@ -279,7 +282,7 @@ export default function MessageDetailModal({ isOpen, onClose, message }) {
 
             <div style={{ background: '#f8fafc', padding: '10px 12px', borderRadius: 8, border: '1px solid #f1f5f9' }}>
               <div style={{ fontSize: 11.5, color: '#64748b' }}>
-                Thời gian nhận tin (FPT)
+                Thời gian nhận tin (Nhà mạng)
               </div>
               <div style={{ fontSize: 12.5, color: '#334155', marginTop: 3 }}>
                 {m.deliveredAt ? new Date(m.deliveredAt).toLocaleString('vi-VN') : (m.sentAt ? new Date(m.sentAt).toLocaleString('vi-VN') : 'Chờ xác nhận')}

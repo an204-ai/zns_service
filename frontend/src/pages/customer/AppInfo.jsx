@@ -102,7 +102,7 @@ export default function CustomerAppInfo() {
     const secretTrimmed = webhookSecretInput.trim();
 
     if (dlrTrimmed && !/^https?:\/\/.+/i.test(dlrTrimmed)) {
-      toast.error('Webhook URL nhận trạng thái (DLR) không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
+      toast.error('Webhook URL nhận trạng thái tin không hợp lệ (phải bắt đầu bằng http:// hoặc https://)');
       return;
     }
 
@@ -294,8 +294,7 @@ export default function CustomerAppInfo() {
               </div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Khóa bảo mật API Key</span>
-                  <span style={{ fontSize: 11, color: '#64748b' }}>(Dùng cho HTTP API gửi tin ZNS)</span>
+                  <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Khóa API Key</span>
                 </div>
                 <div
                   style={{
@@ -379,12 +378,11 @@ export default function CustomerAppInfo() {
                 </div>
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Cấu hình Webhook DLR</span>
-                    <span style={{ fontSize: 11, color: '#64748b' }}>(Nhận trạng thái tin nhắn tức thời)</span>
+                    <span style={{ fontSize: 13, fontWeight: 600, color: '#0f172a' }}>Cấu hình Webhook Callback</span>
                   </div>
                   {!(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl || selectedApp?.apiKey?.webhookSecret) && (
                     <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 2 }}>
-                      Chưa thiết lập URL nhận trạng thái tin nhắn tự động cho ứng dụng này
+                      Chưa thiết lập URL nhận trạng thái tự động
                     </div>
                   )}
                 </div>
@@ -452,7 +450,7 @@ export default function CustomerAppInfo() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>
-                      1. Trạng thái gửi tin (DLR)
+                      1. Webhook URL nhận trạng thái tin
                     </span>
                     {(selectedApp?.apiKey?.webhookDlrUrl || selectedApp?.apiKey?.webhookUrl) ? (
                       <span style={{ fontSize: 11, color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
@@ -506,7 +504,7 @@ export default function CustomerAppInfo() {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                     <span style={{ fontSize: 11.5, fontWeight: 600, color: '#334155' }}>
-                      2. Mã xác thực (Bearer Token)
+                      2. Mã xác thực Bearer Token
                     </span>
                     {selectedApp?.apiKey?.webhookSecret ? (
                       <span style={{ fontSize: 11, color: '#16a34a', display: 'inline-flex', alignItems: 'center', gap: 3, fontWeight: 500 }}>
@@ -590,13 +588,13 @@ export default function CustomerAppInfo() {
             {isQuotaLoading ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#64748b' }}>
                 <div className="spinner" style={{ width: 14, height: 14 }} />
-                <span>Đang kiểm tra hạn mức từ máy chủ FPT...</span>
+                <span>Đang kiểm tra hạn mức từ nhà mạng...</span>
               </div>
             ) : isQuotaError ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: '#991b1b', flexWrap: 'wrap' }}>
                 <WarningCircle size={16} color="#dc2626" weight="bold" />
                 <span>
-                  Không thể lấy hạn mức FPT: <span style={{ color: '#b91c1c' }}>{quotaError?.response?.data?.message || quotaError?.message || 'Timeout / Lỗi kết nối'}</span>
+                  Không thể kết nối đến cổng nhà mạng: <span style={{ color: '#b91c1c' }}>{quotaError?.response?.data?.message || quotaError?.message || 'Timeout / Lỗi kết nối'}</span>
                 </span>
                 <button
                   type="button"
@@ -655,7 +653,7 @@ export default function CustomerAppInfo() {
               </div>
             ) : (
               <div style={{ color: '#64748b' }}>
-                Chưa có dữ liệu hạn mức từ FPT. Bấm "Làm mới" để kiểm tra.
+                Chưa có dữ liệu hạn mức từ nhà mạng. Bấm "Làm mới" để kiểm tra.
               </div>
             )}
 
@@ -752,7 +750,7 @@ export default function CustomerAppInfo() {
                     <td colSpan={7} className="empty-state">
                       <div className="empty-state-title">Chưa có mẫu tin nào</div>
                       <div className="empty-state-text">
-                        Ứng dụng liên kết này chưa có mẫu tin ZNS nào được đồng bộ từ FPT Telecom
+                        Ứng dụng liên kết này chưa có mẫu tin ZNS nào được đồng bộ từ nhà mạng
                       </div>
                     </td>
                   </tr>
@@ -823,7 +821,7 @@ export default function CustomerAppInfo() {
                 }}
               >
                 <h2 style={{ fontSize: 16, fontWeight: 700, color: '#0f172a', margin: 0, textAlign: 'left' }}>
-                  Cài đặt Webhook DLR
+                  Cài đặt Webhook Callback
                 </h2>
                 <button
                   type="button"
@@ -862,7 +860,7 @@ export default function CustomerAppInfo() {
                 {/* Webhook DLR URL */}
                 <div>
                   <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#0f172a', marginBottom: 6, textAlign: 'left' }}>
-                    Webhook URL nhận trạng thái gửi tin (DLR)
+                    Webhook URL nhận trạng thái tin
                   </label>
                   <input
                     type="url"
@@ -883,23 +881,20 @@ export default function CustomerAppInfo() {
                       boxSizing: 'border-box',
                     }}
                   />
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: 1.4, textAlign: 'left' }}>
-                    Địa chỉ API trên máy chủ của bạn để hệ thống gửi dữ liệu trạng thái tin nhắn về khi FPT phản hồi.
-                  </div>
                 </div>
 
                 {/* Mã Bearer Token Header */}
                 <div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
                     <label style={{ fontSize: 13, fontWeight: 600, color: '#0f172a', margin: 0, textAlign: 'left' }}>
-                      Mã xác thực Bearer Token (Header Authorization)
+                      Mã xác thực Bearer Token
                     </label>
                     <span style={{ fontSize: 11.5, color: '#64748b' }}>Tùy chọn</span>
                   </div>
                   <div style={{ position: 'relative' }}>
                     <input
                       type={showSecretInputVisible ? 'text' : 'password'}
-                      placeholder="Ví dụ: eyJhbGciOi... hoặc chuỗi mã token bí mật"
+                      placeholder="Ví dụ: my_secret_token_123"
                       value={webhookSecretInput}
                       onChange={(e) => setWebhookSecretInput(e.target.value)}
                       style={{
@@ -937,9 +932,6 @@ export default function CustomerAppInfo() {
                     >
                       {showSecretInputVisible ? <EyeSlash size={16} /> : <Eye size={16} />}
                     </button>
-                  </div>
-                  <div style={{ fontSize: 12, color: '#64748b', marginTop: 4, lineHeight: 1.4, textAlign: 'left' }}>
-                    Hệ thống sẽ gửi kèm Header <strong>Authorization: Bearer [mã token]</strong> khi gửi trạng thái tin nhắn về máy chủ của bạn.
                   </div>
                 </div>
               </div>

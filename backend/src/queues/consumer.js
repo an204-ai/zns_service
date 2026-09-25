@@ -56,7 +56,7 @@ async function startWorker() {
           where: { id: messageId },
           data: {
             status: 'SENT',
-            fptMessageId: result.data.message_id,
+            messageId: result.data.message_id,
             sentAt: new Date(),
           },
         });

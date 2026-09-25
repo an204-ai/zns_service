@@ -77,7 +77,7 @@ router.post('/fpt-dlr', async (req, res) => {
               ref_id: updated.refId,
               phone: updated.phone,
               status: updated.status,
-              fpt_message_id: msg_id,
+              message_id: msg_id,
               error_code: error || null,
               error_info: error_info || null,
               sent_time: sent_time || null,
@@ -112,7 +112,7 @@ router.post('/fpt-rating', async (req, res) => {
     const message = await prisma.message.findFirst({
       where: {
         OR: [
-          msg_id ? { fptMessageId: msg_id } : null,
+          msg_id ? { messageId: msg_id } : null,
           ref_id ? { refId: ref_id } : null,
           ref_id ? { id: ref_id } : null,
         ].filter(Boolean),
@@ -141,7 +141,7 @@ router.post('/fpt-rating', async (req, res) => {
     if (io) {
       io.to(`user:${message.userId}`).emit('message:rating', {
         messageId: message.id,
-        fptMessageId: msg_id,
+        message_id: msg_id,
         phone: phone || message.phone,
         rating: updated.rating,
         ratingFeedbacks: updated.ratingFeedbacks,

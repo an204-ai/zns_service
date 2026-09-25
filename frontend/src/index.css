@@ -1708,19 +1708,33 @@ table thead th,
   flex-shrink: 0;
 }
 
-/* Clickable table row and selected state */
-.table tbody tr.clickable-row {
-  cursor: pointer;
-  transition: background-color var(--transition-fast);
+/* Clickable table row and selected state - hover đậm rõ ràng trên tất cả các bảng */
+.table tbody tr.clickable-row,
+.table tbody tr[style*="cursor: pointer"],
+.table tbody tr[style*="cursor:pointer"],
+.table-clickable tbody tr {
+  cursor: pointer !important;
+  transition: background-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
 }
 
-.table tbody tr.clickable-row:hover {
-  background-color: var(--color-gray-50);
+.table tbody tr.clickable-row:hover,
+.table tbody tr[style*="cursor: pointer"]:hover,
+.table tbody tr[style*="cursor:pointer"]:hover,
+.table-clickable tbody tr:hover {
+  background-color: #e2e8f0 !important;
+  box-shadow: inset 4px 0 0 #2563eb !important;
+}
+
+.table tbody tr.clickable-row:hover td,
+.table tbody tr[style*="cursor: pointer"]:hover td,
+.table tbody tr[style*="cursor:pointer"]:hover td,
+.table-clickable tbody tr:hover td {
+  background-color: transparent !important;
 }
 
 .table tbody tr.selected-row {
-  background-color: #eff6ff !important;
-  box-shadow: inset 3px 0 0 var(--color-primary);
+  background-color: #dbeafe !important;
+  box-shadow: inset 4px 0 0 #2563eb !important;
 }
 
 /* ======== Search & Filters ======== */
