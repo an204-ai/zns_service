@@ -1105,10 +1105,10 @@ export default function AdminCustomerDetail() {
                         className="btn btn-secondary btn-sm"
                         style={{ height: 36, padding: '0 12px', fontSize: 12, display: 'inline-flex', alignItems: 'center', gap: 4 }}
                         onClick={() => {
-                          navigator.clipboard.writeText(currentSelectedApp.apiKey.prefix);
+                          navigator.clipboard.writeText(currentSelectedApp.apiKey.apiKey);
                           setCopiedKey(true);
                           setTimeout(() => setCopiedKey(false), 2000);
-                          toast.success('Đã sao chép tiền tố API Key');
+                          toast.success('Đã sao chép API Key');
                         }}
                       >
                         {copiedKey ? <Check size={14} color="#16a34a" /> : <CopySimple size={14} />}

@@ -217,10 +217,7 @@ async function getCustomerById(id) {
   const systemApps = customer.systemAppAssignments || [];
 
   for (const app of privateApps) {
-    let key = app.apiKeys?.[0];
-    if (!key) {
-      key = await apiKeyService.getOrCreateApiKeyForApp(id, app.id, `Khóa API - ${app.appName}`);
-    }
+    const key = await apiKeyService.getOrCreateApiKeyForApp(id, app.id, `Khóa API - ${app.appName}`);
     allApps.push({
       ...app,
       type: 'PRIVATE',
@@ -232,10 +229,7 @@ async function getCustomerById(id) {
   for (const a of systemApps) {
     const config = a.appConfig;
     if (!config) continue;
-    let key = config.apiKeys?.[0];
-    if (!key) {
-      key = await apiKeyService.getOrCreateApiKeyForApp(id, config.id, `Khóa API - ${config.appName}`);
-    }
+    const key = await apiKeyService.getOrCreateApiKeyForApp(id, config.id, `Khóa API - ${config.appName}`);
     allApps.push({
       ...config,
       type: 'SYSTEM',
